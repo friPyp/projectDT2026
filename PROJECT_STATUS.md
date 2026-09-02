@@ -164,3 +164,5 @@ CITIZEN: citizen@demo.local / <password>
 ADMIN:   admin@demo.local / <password>
 PARTNER (x4, seeded, one per domain cluster): partner1@demo.local ... partner4@demo.local / <password>
 ```
+
+<!-- push test: connectivity check by devansh4281, 2026-09-02T06:24Z -->
