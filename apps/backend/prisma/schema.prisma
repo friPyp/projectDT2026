@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CITIZEN
+  PARTNER
+  ADMIN
+}
+
+enum PartnerType {
+  UNIVERSITY
+  INDUSTRY
+}
+
+enum Category {
+  EDUCATION
+  AGRICULTURE
+  HEALTHCARE
+  WATER
+  ENVIRONMENT
+  ENERGY
+  URBAN_DEVELOPMENT
+  PUBLIC_ADMIN
+}
+
+enum ChallengeStatus {
+  SUBMITTED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum NotificationType {
+  CHALLENGE_ASSIGNED
+  STATUS_UPDATED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  phone        String?  @unique
+  email        String?  @unique
+  passwordHash String
+  role         Role
+  district     String?
+  createdAt    DateTime @default(now())
+
+  partner       Partner?
+  challenges    Challenge[]    @relation("CitizenChallenges")
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Partner {
+  id        String      @id @default(cuid())
+  userId    String      @unique
+  user      User        @relation(fields: [userId], references: [id])
+  orgName   String
+  type      PartnerType
+  domains   Category[]
+  createdAt DateTime    @default(now())
+
+  challenges Challenge[] @relation("PartnerChallenges")
+
+  @@map("partners")
+}
+
+model Challenge {
+  id                String          @id @default(cuid())
+  citizenId         String
+  citizen           User            @relation("CitizenChallenges", fields: [citizenId], references: [id])
+  title             String
+  description       String
+  category          Category
+  district          String
+  status            ChallengeStatus @default(SUBMITTED)
+  assignedPartnerId String?
+  assignedPartner   Partner?        @relation("PartnerChallenges", fields: [assignedPartnerId], references: [id])
+  team              String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@map("challenges")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      NotificationType
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@map("notifications")
+}
