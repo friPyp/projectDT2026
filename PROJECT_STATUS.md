@@ -82,15 +82,72 @@ Anything the next person picking this up needs to know:
   the dev sandbox used earlier in this session can't reach Prisma's engine
   download host at all.
 
+### Pass 2 — 2026-09-09 — Preza — Fixed accidental root package.json overwrite; DB step still blocked in this environment
+Branch/commit: main (direct push)
+Did:
+- Cloned the repo fresh and read PROJECT_REFERENCE.md, PROJECT_STATUS.md,
+  and TEAM_WORKFLOW.md, plus full commit history, before touching anything
+- Found that the most recent commit at the time (`25c8d1a "Update
+  package.json"`) had accidentally overwritten the **root** `package.json`
+  with a verbatim copy of `apps/backend/package.json`'s content. This
+  deleted the monorepo workspace scripts (`dev:backend`, `dev:frontend`,
+  `build:backend`, `build:frontend`) and caused a package-name collision
+  (`"name": "backend"` at both root and `apps/backend`), which breaks
+  `pnpm --filter backend ...` commands. This wasn't logged as intentional
+  work in this file, so it was flagged and confirmed as a mistake before
+  fixing.
+- Restored the root `package.json` to its correct monorepo-workspace form
+  (same content as commit `31d4195`, before the accidental overwrite).
+  `apps/backend/package.json` was not touched — it already had the correct
+  content, including the `"prisma": { "seed": ... }` fix from Pass 1.
+- Verified the fix: `pnpm install` now resolves all 3 workspace projects
+  (root, backend, frontend) cleanly with no name collision. Frontend
+  typechecks clean (`tsc --noEmit`). Backend typecheck is blocked only by
+  `@prisma/client` not having run its generate step in this sandbox — same
+  documented limitation as Pass 1 (this sandbox, like the one in Pass 1,
+  cannot reach Prisma's engine-download host over the network), not a new
+  bug introduced by this fix.
+Files touched: `package.json` (root) only.
+Decisions made: none requiring a call — the package.json issue was a clear
+  accidental overwrite, not a design choice, so it was fixed rather than
+  flagged as a decision.
+Deviations from spec: none.
+Bugs found/fixed:
+- Fixed: accidental root `package.json` overwrite (see above).
+Left in a broken/incomplete state:
+- **The actual Session 1 closing task (re-run seed, confirm health check)
+  is still not done.** This working environment cannot reach the Neon
+  database or Prisma's engine-download host (both outside its network
+  allowlist), so it could not be completed from here. Exact commands to
+  run on a real Linux environment (fresh clone through health check) were
+  handed off in-chat — see below for the short version.
+Anything the next person picking this up needs to know:
+- On a real Linux environment (a normal machine, or Termux + proot-distro
+  Ubuntu):
+  ```
+  cd apps/backend
+  npx prisma generate
+  npx prisma db seed
+  pnpm dev   # in one terminal
+  curl http://localhost:4000/api/v1/health   # in another
+  ```
+  Expect `{ success: true, db: "connected" }`. Once that's confirmed,
+  Session 1 is fully closed and Session 2 (auth) can start. Nothing else
+  from Session 1 needs redoing — migration, schema, and frontend scaffold
+  are all still confirmed good from Pass 1.
+
 ---
 
 ## 1. Current phase
 
-**Session 1 nearly done.** Scaffold, schema, and frontend are all done and
+**Session 1 nearly done — one step left, blocked on environment access, not
+on unresolved work.** Scaffold, schema, and frontend are all done and
 verified. The migration has been confirmed applied against the real Neon
-database. The only remaining step is running the seed script (it failed
-once on a missing config, now fixed, not yet re-confirmed) and one final
-health-check confirmation.
+database. The root package.json regression from between passes has been
+fixed and verified. The only remaining step is running the seed script
+(config fix is in place, confirmed clean by Pass 2, just needs to actually
+be run somewhere with real DB network access) and one final health-check
+confirmation.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -134,7 +191,9 @@ people editing the same module in the same day is how things get lost.
 - Tables migrated: **Yes — confirmed applied to the real Neon database**
   (migration `20260909050527_init`, run via Termux + proot-distro Ubuntu)
 - Seed data present: **Not yet confirmed** — failed once on a missing
-  `package.json` config (now fixed), re-run pending
+  `package.json` config (fixed in Pass 1), then a separate accidental
+  overwrite of the root `package.json` was found and fixed in Pass 2.
+  Re-run still pending — needs real DB network access.
 
 ### Frontend
 - Pages implemented: _none_ — single placeholder page proving boot only
@@ -163,36 +222,56 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-frPyP, same session: migration confirmed against real Neon DB. Re-running
-seed now that the missing config is fixed, then one final health-check
-confirmation to fully close Session 1.
+Nothing actively in progress. Waiting on someone with real DB network access
+to run the seed + health-check commands in §6 below to close out Session 1.
 
 ---
 
 ## 5. Known bugs
 
-- Fixed: seed script couldn't run because `apps/backend/package.json` was
-  missing the `"prisma": { "seed": ... }` config block. Added in this pass.
+- Fixed (Pass 1): seed script couldn't run because `apps/backend/package.json`
+  was missing the `"prisma": { "seed": ... }` config block.
+- Fixed (Pass 2): the root `package.json` had been accidentally overwritten
+  with a copy of `apps/backend/package.json`'s content (commit `25c8d1a`),
+  deleting the monorepo workspace scripts and causing a package-name
+  collision. Restored to correct workspace-root form.
 - No longer an issue: earlier concern about Prisma's engine binary being
   unreachable only applied to the dev sandbox used for the initial scaffold
   — running on Termux (via proot-distro Ubuntu, since plain Termux itself
   isn't a real enough Linux environment for Prisma either) worked fine and
   the migration is confirmed applied.
+- Ongoing environment note: the working environment used for Pass 2 also
+  cannot reach the Neon database host or Prisma's engine-download host
+  (both outside its network allowlist) — same category of limitation as
+  the original dev sandbox in Pass 1, just a different sandbox. Not a
+  project bug, just means the seed/health-check step needs to run somewhere
+  with real network access (a normal machine, or Termux + proot-distro
+  Ubuntu).
 
 ---
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-Finish Session 1 (last two steps):
-1. Re-run `npx prisma db seed` (from `apps/backend`) — should work now that
-   the missing `package.json` config is fixed
-2. Confirm backend boots and `GET /api/v1/health` returns
-   `{ success: true, db: "connected" }`
-3. Once seed output shows the demo accounts were created and the health
-   check passes, Session 1 is fully done and Session 2 (auth) can start
+Finish Session 1 (last step) — run this on a real Linux environment (normal
+machine, or Termux + proot-distro Ubuntu), NOT a restricted sandbox:
 
-Migration is already confirmed working — nothing left to do there. Frontend
-scaffold is already done and boot-verified — nothing left to do there either.
+```
+cd apps/backend
+npx prisma generate
+npx prisma db seed
+pnpm dev                                    # leave running in one terminal
+curl http://localhost:4000/api/v1/health    # run in a second terminal
+```
+
+Expect the seed to create/upsert the citizen, admin, and 4 partner demo
+accounts with no errors, and the health check to return
+`{ success: true, db: "connected" }`.
+
+Once that's confirmed, Session 1 is fully done and Session 2 (auth) can
+start. Migration is already confirmed working — nothing left to do there.
+Frontend scaffold is already done and boot-verified — nothing left to do
+there either. Root `package.json` regression is fixed — nothing left to do
+there either.
 
 ---
 
@@ -222,7 +301,7 @@ scaffold is already done and boot-verified — nothing left to do there either.
 ## 8. Environment variables needed so far
 
 ```
-DATABASE_URL=      # Neon Postgres connection string (see frPyP for it; kept out of git)
+DATABASE_URL=      # Neon Postgres connection string (see repo owner for it; kept out of git)
 JWT_SECRET=        # any random string for local dev
 PORT=4000
 ```
@@ -252,6 +331,3 @@ PARTNER (x4, seeded, one per domain cluster): partner1@demo.local ... partner4@d
 
 Note: these accounts exist in the seed script but have **not yet been
 created in the real database** — see §3 and §6 above.
-
-<!-- push test: connectivity check by devansh4281, 2026-09-02T06:24Z -->
-<!-- push test: connectivity check by Preza, 2026-09-07T06:54:54Z -->
