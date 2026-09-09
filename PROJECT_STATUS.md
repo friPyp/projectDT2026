@@ -52,42 +52,45 @@ Deviations from spec: none beyond the district fix above.
 Bugs found/fixed: n/a yet — no runtime testing possible for DB-touching code
   (see below).
 Left in a broken/incomplete state:
-- **Prisma engine binary cannot be downloaded from this dev sandbox.**
-  `prisma generate`, `prisma migrate dev`, and the seed script all require
-  downloading a native engine from `binaries.prisma.sh`, which is not
-  reachable from this sandbox's network (confirmed across two Prisma
-  versions — not a version-specific bug, a network allowlist issue).
-  **This means: schema.prisma has been written and reviewed by eye against
-  REFERENCE §6, but has NOT been run against the real Neon database yet.**
-  A real Neon project was created (frPyP) and its connection string is in
-  `apps/backend/.env` (gitignored, not pushed) — the DB itself is empty,
-  no migration has been applied to it yet.
-- `apps/backend/src/prisma.ts` type-checked against a generic Prisma client
-  stub, not real generated types (since `generate` never completed) — so
-  even the TypeScript check on that one file isn't a full guarantee.
+- **Migration confirmed applied against the real Neon database** (frPyP ran
+  it via Termux + proot-distro Ubuntu, since Prisma's engine can't run
+  directly on Termux's Android environment or in the dev sandbox used
+  earlier in this session — both needed a real Linux environment).
+  Prisma's own output confirmed: "Your database is now in sync with your
+  schema." This is a genuine, verified result — not sandbox-only.
+- **Seed script failed on that same run** — not a data/logic bug, a missing
+  config: `apps/backend/package.json` didn't have the `"prisma": { "seed":
+  ... }` block Prisma's CLI needs to know how to invoke `prisma/seed.ts`.
+  **Fixed** in this pass (added `"prisma": { "seed": "tsx prisma/seed.ts" }`
+  to `apps/backend/package.json`). Not yet re-run/confirmed after the fix —
+  that's the very next thing to do.
+- `apps/backend/src/prisma.ts` was earlier type-checked in the dev sandbox
+  against a generic Prisma client stub, not real generated types. Now that
+  `prisma generate` has actually run successfully against the real schema
+  (confirmed by the migration run above), this concern is resolved — real
+  types exist now.
 - Frontend `pnpm build` and `pnpm dev` (HTTP 200, root page served) were
   both verified working with Tailwind + Router + TanStack Query wired in —
-  this part of Session 1 is genuinely done, unlike the Prisma/DB part above.
+  this part of Session 1 is genuinely done.
 Anything the next person picking this up needs to know:
-- **First real task on any machine without the sandbox's network
-  restriction:** `cd apps/backend`, put the real `DATABASE_URL` in `.env`
-  (ask frPyP for the Neon string, or check your own Neon dashboard), run
-  `pnpm install`, `npx prisma migrate dev --name init`, then
-  `npx prisma db seed` (or `pnpm seed`). This should work fine outside this
-  sandbox — the block is sandbox-specific, not a code problem.
-- Do not treat "Session 1" as done until that migration + seed has actually
-  been run and confirmed once, and frontend deps (Tailwind/Router/RHF/Zod/
-  TanStack Query) are installed and the frontend still boots after.
+- Migration is done and confirmed against the real Neon database. The only
+  remaining step is: `cd apps/backend`, `npx prisma db seed` (now that the
+  config fix is in place), then confirm `GET /api/v1/health` returns
+  `{ success: true, db: "connected" }`. This needs a real Linux environment
+  (a normal machine, or Termux + proot-distro Ubuntu on Android) — plain
+  Termux alone fails with an "unknown OS android" error from Prisma, and
+  the dev sandbox used earlier in this session can't reach Prisma's engine
+  download host at all.
 
 ---
 
 ## 1. Current phase
 
-**Session 1 in progress (not complete).** Scaffold and schema are written;
-frontend fully scaffolded with all named deps and boot-verified. The one
-remaining blocker is the database migration/seed, which cannot be run from
-this dev sandbox (network restriction, see Pass 1 log) and needs to be run
-on a normal machine.
+**Session 1 nearly done.** Scaffold, schema, and frontend are all done and
+verified. The migration has been confirmed applied against the real Neon
+database. The only remaining step is running the seed script (it failed
+once on a missing config, now fixed, not yet re-confirmed) and one final
+health-check confirmation.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -127,10 +130,11 @@ people editing the same module in the same day is how things get lost.
   `prisma/seed.ts`
 
 ### Database
-- Prisma schema written: **Yes** (`apps/backend/prisma/schema.prisma`) —
-  written and reviewed, **not yet run against a real database**
-- Tables migrated: **No** (blocked, see Pass 1 log)
-- Seed data present: **No** (seed script written, not yet executed)
+- Prisma schema written: **Yes** (`apps/backend/prisma/schema.prisma`)
+- Tables migrated: **Yes — confirmed applied to the real Neon database**
+  (migration `20260909050527_init`, run via Termux + proot-distro Ubuntu)
+- Seed data present: **Not yet confirmed** — failed once on a missing
+  `package.json` config (now fixed), re-run pending
 
 ### Frontend
 - Pages implemented: _none_ — single placeholder page proving boot only
@@ -159,37 +163,36 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-frPyP, same session: frontend scaffold is now fully done and boot-verified.
-Only remaining item to close out Session 1 is running the real Prisma
-migration + seed on a machine without this dev sandbox's network
-restriction.
+frPyP, same session: migration confirmed against real Neon DB. Re-running
+seed now that the missing config is fixed, then one final health-check
+confirmation to fully close Session 1.
 
 ---
 
 ## 5. Known bugs
 
-- None in application logic. One environment limitation: Prisma's native
-  engine binary cannot be fetched from this dev sandbox's network
-  (`binaries.prisma.sh` unreachable) — not a bug in the code, but blocks
-  in-sandbox verification of anything touching the database. Documented in
-  Pass 1 log above.
+- Fixed: seed script couldn't run because `apps/backend/package.json` was
+  missing the `"prisma": { "seed": ... }` config block. Added in this pass.
+- No longer an issue: earlier concern about Prisma's engine binary being
+  unreachable only applied to the dev sandbox used for the initial scaffold
+  — running on Termux (via proot-distro Ubuntu, since plain Termux itself
+  isn't a real enough Linux environment for Prisma either) worked fine and
+  the migration is confirmed applied.
 
 ---
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-Finish Session 1 (only one real item left):
-1. Run `npx prisma migrate dev --name init` and `pnpm seed` (from
-   `apps/backend`) against the real Neon database, **on a machine with
-   normal internet access** — not this dev sandbox (see Pass 1 log for why
-   it's blocked here specifically)
+Finish Session 1 (last two steps):
+1. Re-run `npx prisma db seed` (from `apps/backend`) — should work now that
+   the missing `package.json` config is fixed
 2. Confirm backend boots and `GET /api/v1/health` returns
    `{ success: true, db: "connected" }`
-3. Once that's confirmed, Session 1 is fully done and Session 2 (auth) can
-   start
+3. Once seed output shows the demo accounts were created and the health
+   check passes, Session 1 is fully done and Session 2 (auth) can start
 
-Frontend scaffold (Tailwind/Router/RHF/Zod/TanStack Query) is already done
-and boot-verified — nothing left to do there for Session 1.
+Migration is already confirmed working — nothing left to do there. Frontend
+scaffold is already done and boot-verified — nothing left to do there either.
 
 ---
 
