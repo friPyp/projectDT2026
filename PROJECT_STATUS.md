@@ -25,8 +25,11 @@ Did:
 - Wrote minimal backend boot code (`src/index.ts`, `src/prisma.ts`) —
   intentionally just an Express server + `/api/v1/health` DB-ping route,
   no real API routes yet (those are session 2+, staying in scope)
-- Scaffolded frontend with Vite React-TS template — Tailwind, Router, React
-  Hook Form, Zod, TanStack Query **not yet added** (next step, see §6)
+- Scaffolded frontend with Vite React-TS template, then added Tailwind
+  (v4, via @tailwindcss/vite), React Router, React Hook Form, Zod, and
+  TanStack Query per REFERENCE §4. Wired up a minimal `main.tsx`/`App.tsx`
+  that boots Router + QueryClientProvider + Tailwind together — placeholder
+  only, no real pages (session 3's job)
 Files touched: see commit diff — all new files, nothing pre-existing touched
 Decisions made:
 - Resolved a conflict in PROJECT_REFERENCE.md itself: §6 schema had no
@@ -59,13 +62,12 @@ Left in a broken/incomplete state:
   A real Neon project was created (frPyP) and its connection string is in
   `apps/backend/.env` (gitignored, not pushed) — the DB itself is empty,
   no migration has been applied to it yet.
-- Frontend scaffold exists (Vite/React/TS boots) but Tailwind, React Router,
-  React Hook Form, Zod, and TanStack Query — all named in REFERENCE §4 — are
-  NOT installed yet. This was interrupted mid-pass by a checkpoint push
-  request; work continues same session.
 - `apps/backend/src/prisma.ts` type-checked against a generic Prisma client
   stub, not real generated types (since `generate` never completed) — so
   even the TypeScript check on that one file isn't a full guarantee.
+- Frontend `pnpm build` and `pnpm dev` (HTTP 200, root page served) were
+  both verified working with Tailwind + Router + TanStack Query wired in —
+  this part of Session 1 is genuinely done, unlike the Prisma/DB part above.
 Anything the next person picking this up needs to know:
 - **First real task on any machine without the sandbox's network
   restriction:** `cd apps/backend`, put the real `DATABASE_URL` in `.env`
@@ -82,9 +84,10 @@ Anything the next person picking this up needs to know:
 ## 1. Current phase
 
 **Session 1 in progress (not complete).** Scaffold and schema are written;
-migration/seed unverified (sandbox network limitation, see Pass 1 log above);
-frontend needs its remaining dependencies installed. This is a mid-session
-checkpoint push, not an end-of-session state — work is continuing.
+frontend fully scaffolded with all named deps and boot-verified. The one
+remaining blocker is the database migration/seed, which cannot be run from
+this dev sandbox (network restriction, see Pass 1 log) and needs to be run
+on a normal machine.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -130,11 +133,14 @@ people editing the same module in the same day is how things get lost.
 - Seed data present: **No** (seed script written, not yet executed)
 
 ### Frontend
-- Pages implemented: _none_ — default Vite starter page only
+- Pages implemented: _none_ — single placeholder page proving boot only
 - Shared components: _none_
 - Tailwind / React Router / React Hook Form / Zod / TanStack Query:
-  **not yet installed** (in progress)
-- API client / TanStack Query hooks set up: **No**
+  **Yes, all installed and wired up** (Tailwind v4 via @tailwindcss/vite,
+  Router + QueryClientProvider active in main.tsx). `pnpm build` and
+  `pnpm dev` both verified working.
+- API client / TanStack Query hooks set up: **No** (provider wired, no
+  actual queries/hooks yet — that's session 3+)
 
 ### Auth
 - JWT issuing/verifying: **No** (session 2)
@@ -153,10 +159,10 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-frPyP, same session: finishing frontend dependency install
-(Tailwind, React Router, React Hook Form, Zod, TanStack Query), then
-attempting migration/seed on a non-sandboxed machine, then a full boot check
-of both apps together.
+frPyP, same session: frontend scaffold is now fully done and boot-verified.
+Only remaining item to close out Session 1 is running the real Prisma
+migration + seed on a machine without this dev sandbox's network
+restriction.
 
 ---
 
@@ -172,19 +178,18 @@ of both apps together.
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-Finish Session 1:
-1. Install remaining frontend deps: `pnpm --filter frontend add tailwindcss
-   @tailwindcss/vite react-router-dom react-hook-form zod
-   @tanstack/react-query` (or current recommended Tailwind v4 Vite setup —
-   check Tailwind's own install docs at build time since versions move fast)
-2. Confirm frontend still boots (`pnpm dev:frontend`) after adding these
-3. Run `npx prisma migrate dev --name init` and `pnpm seed` against the real
-   Neon database **on a machine with normal internet access** (not the
-   dev sandbox used for Pass 1 — see that log entry for why)
-4. Confirm backend boots and `GET /api/v1/health` returns
+Finish Session 1 (only one real item left):
+1. Run `npx prisma migrate dev --name init` and `pnpm seed` (from
+   `apps/backend`) against the real Neon database, **on a machine with
+   normal internet access** — not this dev sandbox (see Pass 1 log for why
+   it's blocked here specifically)
+2. Confirm backend boots and `GET /api/v1/health` returns
    `{ success: true, db: "connected" }`
-5. Once all four of the above are confirmed, Session 1 is actually done and
-   Session 2 (auth) can start
+3. Once that's confirmed, Session 1 is fully done and Session 2 (auth) can
+   start
+
+Frontend scaffold (Tailwind/Router/RHF/Zod/TanStack Query) is already done
+and boot-verified — nothing left to do there for Session 1.
 
 ---
 
