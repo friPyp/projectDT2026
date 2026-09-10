@@ -410,17 +410,58 @@ Anything the next person picking this up needs to know:
 - Session 3 (citizen submission form + dashboard) is next once the above
   is actually confirmed working — see §6.
 
+### Pass 7 — 2026-09-10 — frPyP — Session 2 (auth) CLOSED: verified for real against the live server + Neon database
+Branch/commit: main (direct push, this entry only, no code changes needed)
+Did:
+- Pulled latest first — already up to date, no conflicts.
+- Ran the exact verification steps left at the end of Pass 6, this time on
+  a normal machine with real internet access (not a sandboxed environment):
+  - `pnpm install` initially hit `ERR_PNPM_IGNORED_BUILDS` (a newer local
+    pnpm version has a build-script-approval gate PROJECT_STATUS.md §2 had
+    flagged as a pnpm-10+ issue). Fixed by running `pnpm approve-builds`
+    and re-running install — not a code problem, a one-time local machine
+    setup step.
+  - `npx prisma generate` succeeded cleanly against the real engine-download
+    host (no `403`/checksum errors — confirms Pass 6's blocker really was
+    just that sandbox's network allowlist, not a real problem).
+  - `pnpm dev` booted the server on :4000.
+  - `GET /api/v1/health` → `{"success":true,"db":"connected"}`.
+  - Logged in as the seeded citizen (by phone), seeded admin (by email),
+    and seeded partner1 (by email) — all three returned the correct
+    `{ user, token }` shape from §8, correct roles, correct data.
+  - Registered a brand-new citizen via `POST /auth/register` — succeeded,
+    hardcoded `role: "CITIZEN"` as expected, `email: null` since none was
+    given (schema allows this — phone was provided instead).
+  - `POST /auth/logout` with a valid citizen token → `{"success":true}`.
+  - `POST /auth/logout` with no token → the exact `UNAUTHORIZED` error
+    shape from §8 (`{"success":false,"error":{"code":"UNAUTHORIZED",...}}`),
+    not a crash or an unrelated 404 page.
+Files touched: none (verification only, no code changed).
+Decisions made: none requiring a call.
+Deviations from spec: none.
+Bugs found/fixed: none — Session 2's auth code, written in Pass 6, worked
+  correctly on the first real attempt against the live database.
+Left in a broken/incomplete state: nothing from Session 1 or 2.
+Anything the next person picking this up needs to know:
+- **Session 2 is done and genuinely confirmed** — every endpoint in §8's
+  Auth section works against the real Neon database, matches the frozen
+  contract exactly, and role enforcement / unauthorized handling both
+  behave correctly.
+- If a fresh machine hits `ERR_PNPM_IGNORED_BUILDS` on `pnpm install`, that's
+  expected on newer pnpm — run `pnpm approve-builds`, approve the 4 flagged
+  packages (`@prisma/client`, `@prisma/engines`, `esbuild`, `prisma`), then
+  re-run `pnpm install`. Not a bug.
+- Session 3 (citizen submission form + dashboard) starts next — see §6.
+
 ---
 
 ## 1. Current phase
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
-**Session 2 (auth) code is written but not yet verified** against a live
-server/database — see Pass 6. This sandbox's network can't reach Neon or
-Prisma's engine-download host, so someone needs to run the verification
-steps in Pass 6 on a machine that can, before Session 2 is actually
-considered closed. Session 3 (submission) has not been started and should
-not be, until Session 2 is confirmed.
+**Session 2 (auth) is done and confirmed** against the live server and real
+Neon database — see Pass 7. **Session 3 (citizen submission form +
+dashboard) is next** — see §6. Do not start Session 4 (categorization/
+auto-routing) or anything beyond Session 3's scope yet.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -455,8 +496,8 @@ people editing the same module in the same day is how things get lost.
 ### Backend
 - Endpoints implemented: `GET /api/v1/health` (DB-ping, not a real feature
   endpoint); `POST /api/v1/auth/register`, `POST /api/v1/auth/login`,
-  `POST /api/v1/auth/logout` (Pass 6 — code written, **not yet verified
-  against the real DB**, see Pass 6)
+  `POST /api/v1/auth/logout` (written Pass 6, **verified working against
+  the real Neon database Pass 7**)
 - Middleware implemented: `cors`, `express.json()`, `requireAuth`,
   `requireRole(...roles)` (Pass 6)
 - Modules scaffolded: `src/index.ts`, `src/prisma.ts`, `prisma/schema.prisma`,
@@ -484,13 +525,13 @@ people editing the same module in the same day is how things get lost.
   actual queries/hooks yet — that's session 3+)
 
 ### Auth
-- JWT issuing/verifying: **Code written (Pass 6), not yet run against the
-  real database** — `tsc` typechecks clean except for `@prisma/client`
-  types that only exist after `prisma generate` runs somewhere with real
-  network access
-- Roles enforced: **Code written (Pass 6)** — `requireRole(...roles)`
-  middleware, role read only from the verified JWT; same not-yet-verified
-  caveat as above
+- JWT issuing/verifying: **Written Pass 6, verified working against the
+  real database Pass 7** — register, login (by phone or email, all three
+  roles), and logout all confirmed correct
+- Roles enforced: **Written Pass 6, confirmed Pass 7** —
+  `requireRole(...roles)` middleware, role read only from the verified JWT
+  (never from request body); unauthorized requests confirmed to return the
+  correct `UNAUTHORIZED` error shape from §8
 - Demo accounts seeded: **Yes — confirmed present in the real database**
   (see Database section above)
 
@@ -506,12 +547,8 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-Session 2 (auth) code is written (Pass 6) but **not yet verified** against
-the real Neon database — this sandbox can't reach either Neon or Prisma's
-engine-download host. Next concrete action: someone with a normal internet
-connection runs the verification steps at the end of Pass 6, then updates
-this file to confirm (or report what actually broke). Don't start Session 3
-until that's done.
+Session 3 (citizen submission form + dashboard) is starting now — see §6
+for exact scope. Session 2 (auth) is fully done and confirmed (Pass 7).
 
 ---
 
@@ -550,16 +587,8 @@ until that's done.
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Immediate next action (not a new session — closing out Session 2):**
-Run the verification steps at the end of Pass 6 (§0) on a machine with
-real internet access: `pnpm install`, `npx prisma generate`, `pnpm dev`,
-then hit `/api/v1/auth/login` and `/api/v1/auth/register` with curl/Postman
-using the seeded demo accounts (§10, password `Demo@1234` for all). Update
-this file with the real result — don't mark it done without actually
-running it (see Pass 3's warning about exactly that mistake).
-
-**Once that's confirmed, Session 3 — Citizen submission + dashboard** is
-next (per PROJECT_REFERENCE.md §5, Citizen lane):
+**Session 3 — Citizen submission + dashboard** (per PROJECT_REFERENCE.md §5,
+Citizen lane) — in progress now:
 - Submission form: title, description, category (fixed list of 8),
   district — `POST /challenges` per §8
 - Citizen dashboard: list own challenges + current status —
