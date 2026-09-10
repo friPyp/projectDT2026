@@ -317,16 +317,110 @@ Anything the next person picking this up needs to know:
   produced — logging in with these should work identically to if the
   seed script itself had run successfully.
 
+### Pass 6 — 2026-09-10 — devansh4281 — Session 2 (auth) code written; correctness typechecked, live DB flow not verified in this environment
+Branch/commit: main (direct push)
+Did:
+- Pulled latest first (fast-forward, no conflicts) and read full commit
+  history, PROJECT_REFERENCE.md, and this file before touching anything.
+- Wrote Session 2 exactly to scope (§5): citizen register, login for any
+  seeded/registered role, JWT issuing, verification middleware, role
+  enforcement. Nothing from Session 3 (submission) touched.
+- New files: `src/utils/jwt.ts` (sign/verify), `src/utils/errors.ts`
+  (shared error-response helper matching §8's frozen error shape exactly),
+  `src/middleware/auth.ts` (`requireAuth`, `requireRole(...roles)` — role
+  is read only from the verified JWT, never from the request body, per
+  §4's auth note), `src/validation/auth.ts` (zod schemas for register/login
+  bodies), `src/routes/auth.ts` (`POST /auth/register`, `/auth/login`,
+  `/auth/logout`, matching §8's shapes exactly).
+- Modified: `src/index.ts` — mounted the new auth router at
+  `/api/v1/auth`. Did not touch the existing `/api/v1/health` route or
+  anything else already working.
+- Also closed an outstanding doc gap from Pass 1: added the `district`
+  field to PROJECT_REFERENCE.md §6 (it was in the real schema/DB since
+  Session 1 but never reflected in that doc) and logged it in that file's
+  own §9 change log. No behavior change, doc-only.
+Files touched: `apps/backend/src/index.ts`,
+  `apps/backend/src/{utils/jwt.ts, utils/errors.ts, middleware/auth.ts,
+  validation/auth.ts, routes/auth.ts}` (all new), `PROJECT_REFERENCE.md`
+  (§6, §9). Nothing already-marked-done was rewritten.
+Decisions made:
+- No new libraries needed — bcryptjs, jsonwebtoken, zod, cors, express
+  were all already approved/installed dependencies from Session 1, so
+  nothing required flagging here.
+- `POST /auth/logout` semantics aren't specified in §8 beyond the route
+  existing. There's no session table or refresh-token anywhere in the
+  schema, so JWT auth here is fully stateless — decided logout just means
+  "confirm the caller held a valid token" (200 if so); the actual logout
+  is the frontend discarding the token client-side. Flagging this here in
+  case a teammate expected server-side token invalidation — that would be
+  new infrastructure (a token blacklist / session table) not asked for
+  anywhere in PROJECT_REFERENCE.md, so it wasn't built.
+- `/auth/register` hardcodes `role: "CITIZEN"` server-side and ignores any
+  role field even if one were sent — matches §4's "never trust a role from
+  the frontend" rule directly, not really a discretionary call.
+Deviations from spec: none.
+Bugs found/fixed: none (no pre-existing auth code to have bugs in).
+Left in a broken/incomplete state:
+- **Not actually verified against the real Neon database or a running
+  server.** This working environment's network allowlist blocks both
+  Prisma's engine-download host (`binaries.prisma.sh`) and Neon's host
+  directly — confirmed by actually running `pnpm install` (succeeds) then
+  `npx prisma generate` (fails: `403 Forbidden` fetching the query-engine
+  binary, same with `PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1` set). This
+  is a different root cause than Session 1's Termux/proot issue, but the
+  same category of problem: this specific dev environment cannot run
+  Prisma's engine, full stop.
+- Ran `npx tsc --noEmit` anyway to catch any real bugs independent of that:
+  **zero errors in the new auth code itself.** The only 3 errors reported
+  are `@prisma/client` not exporting `Role`/`User` — those are types that
+  `prisma generate` produces from the schema, and generate never completed
+  here for the network reason above. Not a logic bug; will resolve on its
+  own the moment `prisma generate` runs somewhere with real network access.
+- Per PROJECT_REFERENCE.md §4 ("Testing: Manual checklist, no test
+  framework"), the fix for the above isn't to build a mock-DB test harness
+  in this sandbox — that would itself be scope creep (a testing tool the
+  spec explicitly says not to use). The fix is: run the real manual
+  checklist steps below on a machine that can actually reach Neon.
+Anything the next person picking this up needs to know:
+- **Before trusting this is done, actually run it** — this file has twice
+  before (Pass 1, Pass 2) reported a fix as done when it wasn't; don't
+  repeat that here. Verify like this, on a normal machine or any
+  environment with real internet access (not this sandbox):
+  ```
+  git pull
+  cd apps/backend
+  pnpm install
+  npx prisma generate          # should succeed with real network access
+  pnpm dev                     # starts on :4000
+  ```
+  Then, in another terminal:
+  ```
+  curl -X POST http://localhost:4000/api/v1/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"phone":"9990000001","password":"Demo@1234"}'
+  ```
+  (swap in whichever seeded citizen phone/email is actually in the DB —
+  see §10). Expect `{ "user": {...}, "token": "..." }`. Also try:
+  registering a brand-new citizen via `POST /auth/register`, logging in
+  as a seeded partner/admin by email, and hitting a route with
+  `requireRole` after removing the `Authorization` header to confirm it
+  returns the `UNAUTHORIZED` shape from §8.
+- If `prisma generate` fails on a real machine too, that's a genuinely new
+  problem (not the one described above) and worth its own log entry.
+- Session 3 (citizen submission form + dashboard) is next once the above
+  is actually confirmed working — see §6.
+
 ---
 
 ## 1. Current phase
 
-**Session 1 is done.** Scaffold, schema, migration, seed data, and frontend
-are all confirmed done against the real database and codebase. Session 2
-(auth) is starting next. One open, non-blocking environment note: Prisma's
-query engine doesn't work when running the backend from Termux+proot on
-this phone (see Pass 5) — run the backend from a normal machine when
-testing auth end-to-end; this is not a code or data problem.
+**Session 1 is done** (confirmed against the real database — see Pass 5).
+**Session 2 (auth) code is written but not yet verified** against a live
+server/database — see Pass 6. This sandbox's network can't reach Neon or
+Prisma's engine-download host, so someone needs to run the verification
+steps in Pass 6 on a machine that can, before Session 2 is actually
+considered closed. Session 3 (submission) has not been started and should
+not be, until Session 2 is confirmed.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -359,11 +453,15 @@ people editing the same module in the same day is how things get lost.
 ## 3. What's built (exhaustive, not summarized)
 
 ### Backend
-- Endpoints implemented: `GET /api/v1/health` only (DB-ping check, not a
-  real feature endpoint)
-- Middleware implemented: `cors`, `express.json()` only
+- Endpoints implemented: `GET /api/v1/health` (DB-ping, not a real feature
+  endpoint); `POST /api/v1/auth/register`, `POST /api/v1/auth/login`,
+  `POST /api/v1/auth/logout` (Pass 6 — code written, **not yet verified
+  against the real DB**, see Pass 6)
+- Middleware implemented: `cors`, `express.json()`, `requireAuth`,
+  `requireRole(...roles)` (Pass 6)
 - Modules scaffolded: `src/index.ts`, `src/prisma.ts`, `prisma/schema.prisma`,
-  `prisma/seed.ts`
+  `prisma/seed.ts`, `src/routes/auth.ts`, `src/middleware/auth.ts`,
+  `src/utils/jwt.ts`, `src/utils/errors.ts`, `src/validation/auth.ts`
 
 ### Database
 - Prisma schema written: **Yes** (`apps/backend/prisma/schema.prisma`)
@@ -386,8 +484,13 @@ people editing the same module in the same day is how things get lost.
   actual queries/hooks yet — that's session 3+)
 
 ### Auth
-- JWT issuing/verifying: **No** (session 2)
-- Roles enforced: **No** (session 2)
+- JWT issuing/verifying: **Code written (Pass 6), not yet run against the
+  real database** — `tsc` typechecks clean except for `@prisma/client`
+  types that only exist after `prisma generate` runs somewhere with real
+  network access
+- Roles enforced: **Code written (Pass 6)** — `requireRole(...roles)`
+  middleware, role read only from the verified JWT; same not-yet-verified
+  caveat as above
 - Demo accounts seeded: **Yes — confirmed present in the real database**
   (see Database section above)
 
@@ -403,8 +506,12 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-Session 1 is closed. Session 2 (auth: register/login/JWT, role
-enforcement) is up next — see §6.
+Session 2 (auth) code is written (Pass 6) but **not yet verified** against
+the real Neon database — this sandbox can't reach either Neon or Prisma's
+engine-download host. Next concrete action: someone with a normal internet
+connection runs the verification steps at the end of Pass 6, then updates
+this file to confirm (or report what actually broke). Don't start Session 3
+until that's done.
 
 ---
 
@@ -443,25 +550,31 @@ enforcement) is up next — see §6.
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-Session 1 is done — see §0 Pass 5 and §3 above for full verification detail.
+**Immediate next action (not a new session — closing out Session 2):**
+Run the verification steps at the end of Pass 6 (§0) on a machine with
+real internet access: `pnpm install`, `npx prisma generate`, `pnpm dev`,
+then hit `/api/v1/auth/login` and `/api/v1/auth/register` with curl/Postman
+using the seeded demo accounts (§10, password `Demo@1234` for all). Update
+this file with the real result — don't mark it done without actually
+running it (see Pass 3's warning about exactly that mistake).
 
-**Next up: Session 2 — Auth** (per PROJECT_REFERENCE.md §5, suggested owner:
-Citizen lane). Scope:
-- Citizen register + login (citizens self-register through the UI)
-- Partner + admin login only (they're seeded, not self-registering — see
-  §7 decisions below)
-- JWT issuing on login, verification middleware for protected routes
-- Role enforcement (CITIZEN / PARTNER / ADMIN) per the API contract in
-  PROJECT_REFERENCE.md §8
+**Once that's confirmed, Session 3 — Citizen submission + dashboard** is
+next (per PROJECT_REFERENCE.md §5, Citizen lane):
+- Submission form: title, description, category (fixed list of 8),
+  district — `POST /challenges` per §8
+- Citizen dashboard: list own challenges + current status —
+  `GET /challenges`
+- Do **not** build categorization/auto-routing logic yet (that's Session
+  4) — for now a submitted challenge can just land with `status:
+  SUBMITTED` and no assigned partner; Session 4 is what fills that in.
+  Don't build ahead into it even though it'll be tempting.
 
-Test logins with the seeded demo accounts (§10 below) — all use password
-`Demo@1234`. Do not build ahead into Session 3 (submission form/dashboard)
-even though it'll be tempting once login works.
-
-One environment note carried over from Session 1: if testing this from a
-phone via Termux+proot, expect Prisma's query engine to fail to connect
-even when the database is fine (see Pass 5) — test on a normal machine
-when verifying auth end-to-end against the real database.
+One environment note carried over: if testing from a phone via
+Termux+proot, expect Prisma's query engine to fail to connect even when
+the database is fine (Session 1, Pass 5). This sandbox has a different but
+equally blocking issue: no network access to Neon or Prisma's
+engine-download host at all (Session 2, Pass 6). Either way — verify on a
+normal machine with real internet access.
 
 ---
 
@@ -483,8 +596,13 @@ when verifying auth end-to-end against the real database.
   first, not just editing the file silently.**
 - **Added `district` (nullable) to the User model** to resolve a conflict
   between PROJECT_REFERENCE.md §6 (schema) and §8 (API contract) — see Pass 1
-  log. PROJECT_REFERENCE.md §6 itself still needs a corresponding update by
-  whoever's next in that file (per REFERENCE §9's change-log rule).
+  log. PROJECT_REFERENCE.md §6 has now been updated to document this
+  (Pass 6) — no longer an open doc gap.
+- **`POST /auth/logout` is a no-op confirmation, not a real invalidation.**
+  JWT auth is fully stateless (no session/refresh-token table anywhere in
+  the schema), so logout just confirms the token was valid; the frontend
+  is what actually discards it. See Pass 6 for the reasoning — flagging
+  here in case anyone assumed server-side token blacklisting exists.
 
 ---
 
@@ -507,7 +625,14 @@ early on).
 ```
 GET /api/v1/health   -> { success: true, db: "connected" }   (not part of the
                           frozen contract — internal boot-check only)
+
+POST /api/v1/auth/register   body: { name, phone, password, district } -> { user, token }
+POST /api/v1/auth/login      body: { phone | email, password }         -> { user, token }
+POST /api/v1/auth/logout     (requires Authorization header)           -> { success: true }
 ```
+Code written Pass 6, matches PROJECT_REFERENCE.md §8 exactly. **Not yet
+verified against the real database** — see Pass 6 for why and for exact
+verification steps.
 
 ---
 
