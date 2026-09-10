@@ -136,18 +136,60 @@ Anything the next person picking this up needs to know:
   from Session 1 needs redoing — migration, schema, and frontend scaffold
   are all still confirmed good from Pass 1.
 
+### Pass 3 — 2026-09-09 — frPyP — Correction: the seed config fix was never actually committed until now
+Branch/commit: main (direct push)
+Did:
+- Investigated why `npx prisma db seed` still failed with the "missing
+  prisma.seed config" error even after Pass 1 and Pass 2 both claimed it
+  was fixed. Traced it carefully:
+  - Pass 1's fix to `apps/backend/package.json` was made locally in that
+    session but **never actually committed or pushed** — the session got
+    interrupted before `git commit`/`git push` ran.
+  - Separately, frPyP tried to add a similar fix directly via GitHub's web
+    UI, but pasted the content into the wrong file — the **root**
+    `package.json` instead of `apps/backend/package.json` (commit
+    `25c8d1a`). This is what Pass 2 (Preza) correctly caught and fixed —
+    but Preza reasonably assumed, since the pasted content looked like a
+    backend package.json, that the real `apps/backend/package.json`
+    already had the fix too. It didn't — that assumption was the one gap.
+  - Net effect: no commit in this repo's history had ever actually added
+    the `"prisma": { "seed": ... }` block to `apps/backend/package.json`,
+    despite two separate session logs claiming it was done.
+- Actually added and pushed the fix this time (verified staged content,
+  valid JSON, committed, pushed, confirmed on `origin/main` afterward).
+Files touched: `apps/backend/package.json` only.
+Decisions made: none requiring a call — straightforward bug, fixed directly.
+Deviations from spec: none.
+Bugs found/fixed:
+- Fixed: `apps/backend/package.json` was genuinely missing the
+  `"prisma": { "seed": "tsx prisma/seed.ts" }` block this whole time,
+  despite being reported as fixed twice before. Confirmed fixed now by
+  reading the pushed commit content directly from `origin/main`.
+Left in a broken/incomplete state:
+- Same as before: seed has still not been successfully run and confirmed.
+  This should now actually work — untested as of this entry.
+Anything the next person picking this up needs to know:
+- **Don't trust "fixed, confirmed" claims in this file at face value if the
+  actual symptom recurs** — verify by reading the real file content (e.g.
+  `git show origin/main:path/to/file`), not just by reading a previous
+  session's description of what they believed they fixed. That's exactly
+  what went wrong here twice in a row.
+- Next step is still: `cd apps/backend`, `npx prisma db seed`, then the
+  health check. Should work now — genuinely untested.
+
 ---
 
 ## 1. Current phase
 
-**Session 1 nearly done — one step left, blocked on environment access, not
-on unresolved work.** Scaffold, schema, and frontend are all done and
-verified. The migration has been confirmed applied against the real Neon
-database. The root package.json regression from between passes has been
-fixed and verified. The only remaining step is running the seed script
-(config fix is in place, confirmed clean by Pass 2, just needs to actually
-be run somewhere with real DB network access) and one final health-check
-confirmation.
+**Session 1 nearly done — one step left, genuinely blocked only on being run
+somewhere with real DB network access now, not on unresolved bugs.**
+Scaffold, schema, and frontend are all done and verified. The migration has
+been confirmed applied against the real Neon database. The root
+package.json regression is fixed. The `apps/backend/package.json` seed
+config — reported fixed twice before but actually missing both times
+(see Pass 3) — has now genuinely been committed and pushed. The only
+remaining step is running the seed script and one final health-check
+confirmation, and this time it should actually work.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -190,10 +232,9 @@ people editing the same module in the same day is how things get lost.
 - Prisma schema written: **Yes** (`apps/backend/prisma/schema.prisma`)
 - Tables migrated: **Yes — confirmed applied to the real Neon database**
   (migration `20260909050527_init`, run via Termux + proot-distro Ubuntu)
-- Seed data present: **Not yet confirmed** — failed once on a missing
-  `package.json` config (fixed in Pass 1), then a separate accidental
-  overwrite of the root `package.json` was found and fixed in Pass 2.
-  Re-run still pending — needs real DB network access.
+- Seed data present: **Not yet confirmed** — the config fix this needed was
+  reported done twice (Pass 1, Pass 2) but genuinely never committed until
+  Pass 3. Should work now — re-run pending.
 
 ### Frontend
 - Pages implemented: _none_ — single placeholder page proving boot only
@@ -229,12 +270,15 @@ to run the seed + health-check commands in §6 below to close out Session 1.
 
 ## 5. Known bugs
 
-- Fixed (Pass 1): seed script couldn't run because `apps/backend/package.json`
-  was missing the `"prisma": { "seed": ... }` config block.
+- **Corrected (Pass 3):** the `"prisma": { "seed": ... }` block was reported
+  fixed in both Pass 1 and Pass 2, but had genuinely never been committed to
+  `apps/backend/package.json` in either case (Pass 1's fix was made locally
+  but never pushed; Pass 2 fixed a related-but-different file and assumed
+  this one was already correct). Actually fixed and pushed in Pass 3.
 - Fixed (Pass 2): the root `package.json` had been accidentally overwritten
-  with a copy of `apps/backend/package.json`'s content (commit `25c8d1a`),
-  deleting the monorepo workspace scripts and causing a package-name
-  collision. Restored to correct workspace-root form.
+  with a copy of `apps/backend/package.json`'s content (commit `25c8d1a`,
+  made via GitHub web UI), deleting the monorepo workspace scripts and
+  causing a package-name collision. Restored to correct workspace-root form.
 - No longer an issue: earlier concern about Prisma's engine binary being
   unreachable only applied to the dev sandbox used for the initial scaffold
   — running on Termux (via proot-distro Ubuntu, since plain Termux itself
