@@ -177,19 +177,98 @@ Anything the next person picking this up needs to know:
 - Next step is still: `cd apps/backend`, `npx prisma db seed`, then the
   health check. Should work now — genuinely untested.
 
+### Pass 4 — 2026-09-10 — frPyP — Config fix confirmed working; hit a real environment blocker with Prisma's query engine under proot; pivoted to raw SQL, unresolved
+Branch/commit: main (direct push) — this entry only, no code changes needed
+Did:
+- Confirmed the Pass 3 fix worked: `npx prisma db seed` on the real Termux +
+  proot-distro Ubuntu setup got past the config error cleanly this time.
+- Hit a **new, separate, genuine blocker**: every attempt to actually run
+  the seed (or even `prisma migrate status`) failed with `P1001: Can't
+  reach database server`, despite raw TCP connectivity (`nc -zv`)
+  succeeding every single time against the same host. Tried, in order:
+  waking the suspended Neon compute via the dashboard; switching from the
+  pooled (`-pooler`) connection string to the direct one; forcing IPv4 via
+  `/etc/gai.conf`; hardcoding the IPv4 IP in `/etc/hosts`; dropping
+  `channel_binding=require`; adding `pgbouncer=true` back on the pooler
+  connection. **None of it fixed it** — including re-testing the exact
+  pooler connection string that had worked for the original migration,
+  which now also failed the same way.
+- Working theory (not proven): Prisma's query-engine binary has some
+  incompatibility with the `proot` sandboxing layer Termux uses to run
+  Ubuntu — note that `prisma migrate` (a different engine binary,
+  schema-engine) worked fine earlier in this same environment, so it's
+  plausible the two engines behave differently under `proot`, though this
+  was never fully confirmed since even schema-engine failed on a later
+  retry. Genuinely inconclusive — could also be something environmental
+  that changed between attempts (network, Neon-side compute state, etc.).
+  Whoever picks this up should treat this as unresolved, not root-caused.
+- Pivoted to a workaround: skip Prisma's engine for seeding entirely, and
+  insert the demo accounts directly via Neon's own web SQL editor (runs on
+  Neon's infrastructure, no phone/proot/network variable involved). Wrote
+  the equivalent raw SQL (matching `prisma/seed.ts`'s data and using the
+  same bcrypt hash for `Demo@1234`) and had frPyP run it there.
+- **That attempt also failed** — Neon's SQL editor reported "Failed
+  transaction: ROLLBACK required" with an error under a results tab that
+  was not yet read before the session paused to consider next steps.
+Files touched: none (all troubleshooting was against `.env`/environment
+  config on the Termux device, never committed — `.env` is gitignored).
+Decisions made: frPyP asked whether Session 2 could start in parallel (a
+  different Claude session) while this is unresolved. Answered honestly:
+  per the project's own rule against building ahead of the current phase,
+  Session 1 isn't formally closed yet. The practical middle ground offered:
+  Session 2's auth *code* (register/login/JWT) can reasonably be written
+  and reviewed without live seeded data, but won't be fully testable
+  end-to-end (especially partner/admin login) until this is resolved.
+  frPyP's call on whether to proceed — not yet confirmed as of this entry.
+Deviations from spec: none.
+Bugs found/fixed: none fixed this pass — see "Left in a broken/incomplete
+  state" below.
+Left in a broken/incomplete state:
+- **Seed data is still not in the database.** Two independent approaches
+  (Prisma's engine directly, and raw SQL via Neon's own editor) have both
+  failed so far. This is now the single blocking item for Session 1.
+- The raw SQL attempt's actual error was never read — that's the most
+  promising immediate next step, since Neon's own SQL editor removes the
+  proot/network variables entirely and a SQL-level error (constraint
+  violation, type mismatch, etc.) would be a much simpler, more concrete
+  problem than the "can't reach server" one.
+Anything the next person picking this up needs to know:
+- **Read the actual error under the "2: ERROR" tab in Neon's SQL editor
+  result first** — likely something like an enum type name mismatch, a
+  quoting issue, or a constraint violation in the hand-written SQL (in
+  this repo's `seed.sql`-equivalent, generated in-chat, not committed to
+  the repo). Fix and re-run from Neon's editor directly — no phone, no
+  proot, no Prisma engine involved, so this path should be far more
+  reliable once the SQL itself is correct.
+- If that raw-SQL path is fixed and confirmed (verify with
+  `SELECT email, role FROM users;` returning 6 rows), Session 1 is done —
+  the migration was already the requirement that needed Prisma's engine;
+  getting the actual row data in doesn't have to go through Prisma at all.
+- If someone wants to keep debugging the Prisma-engine-under-proot issue
+  instead (not necessary, but useful to know for the team's future Termux
+  workflows): the next diagnostic step would be running the exact same
+  `prisma migrate status` command back-to-back several times in a row to
+  see if it's intermittent (flaky network/compute-wake timing) vs. a hard
+  failure every time (real incompatibility).
+
 ---
 
 ## 1. Current phase
 
-**Session 1 nearly done — one step left, genuinely blocked only on being run
-somewhere with real DB network access now, not on unresolved bugs.**
-Scaffold, schema, and frontend are all done and verified. The migration has
-been confirmed applied against the real Neon database. The root
-package.json regression is fixed. The `apps/backend/package.json` seed
-config — reported fixed twice before but actually missing both times
-(see Pass 3) — has now genuinely been committed and pushed. The only
-remaining step is running the seed script and one final health-check
-confirmation, and this time it should actually work.
+**Session 1 blocked on one item — not a design problem, an environment
+problem.** Scaffold, schema, and frontend are all done and verified. The
+migration has been confirmed applied against the real Neon database. The
+seed data is the only thing not yet in place — extensive troubleshooting
+(see Pass 4) ruled out several causes but hasn't found the real one yet.
+A raw-SQL workaround via Neon's own editor is in progress but its error
+hasn't been read yet — that's the most promising next step.
+
+**If starting Session 2 in parallel:** the auth *code* (register/login/JWT
+middleware) can reasonably be written and reviewed without live seed data.
+It will not be fully testable end-to-end — especially logging in as the
+seeded partner/admin accounts — until the seed issue above is resolved.
+New citizen registrations can still be tested fine once auth exists, since
+those don't depend on seed data.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -263,8 +342,10 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-Nothing actively in progress. Waiting on someone with real DB network access
-to run the seed + health-check commands in §6 below to close out Session 1.
+Blocked on getting seed data into the real database. A raw-SQL workaround
+via Neon's own SQL editor is mid-attempt — it failed once with an unread
+error (see Pass 4). Reading that error and fixing the SQL is the immediate
+next step for whoever picks this up.
 
 ---
 
@@ -284,38 +365,64 @@ to run the seed + health-check commands in §6 below to close out Session 1.
   — running on Termux (via proot-distro Ubuntu, since plain Termux itself
   isn't a real enough Linux environment for Prisma either) worked fine and
   the migration is confirmed applied.
-- Ongoing environment note: the working environment used for Pass 2 also
-  cannot reach the Neon database host or Prisma's engine-download host
-  (both outside its network allowlist) — same category of limitation as
-  the original dev sandbox in Pass 1, just a different sandbox. Not a
-  project bug, just means the seed/health-check step needs to run somewhere
-  with real network access (a normal machine, or Termux + proot-distro
-  Ubuntu).
+- **New, unresolved (Pass 4):** `npx prisma db seed` (and even `npx prisma
+  migrate status`) fail with `P1001: Can't reach database server` when run
+  from Termux + proot-distro Ubuntu, despite raw TCP connectivity (`nc -zv`)
+  succeeding every time. Tried and ruled out: suspended compute, pooled vs.
+  direct connection string, IPv4-vs-IPv6 (both via `/etc/gai.conf` and a
+  hardcoded `/etc/hosts` entry), `channel_binding`/`pgbouncer` connection
+  flags. Root cause still unknown — possibly a `proot`-specific
+  incompatibility with Prisma's query-engine binary specifically (the
+  schema-engine binary used by `migrate` worked once, then also failed on
+  a later retry, so this isn't fully confirmed either). See Pass 4 for the
+  full list of things tried. **Currently working around this by writing
+  the seed data via raw SQL directly in Neon's own web SQL editor instead
+  of through Prisma at all** — that attempt also hit an error, not yet
+  read/diagnosed.
 
 ---
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-Finish Session 1 (last step) — run this on a real Linux environment (normal
-machine, or Termux + proot-distro Ubuntu), NOT a restricted sandbox:
+**Immediate next step:** get the demo accounts into the real database.
+Two paths, either is fine:
 
+**Path A (recommended — sidesteps the unresolved Prisma/proot issue):**
+Open console.neon.tech → your project → SQL Editor, and run a hand-written
+SQL insert matching `prisma/seed.ts`'s data (6 rows: 1 citizen, 1 admin,
+4 partners, all with the same bcrypt hash for password `Demo@1234`). A
+version of this SQL was generated in-chat in Pass 4 but hit an error that
+was never read — open the "2: ERROR" result tab in Neon's editor, fix
+whatever it says (likely a small SQL issue — enum casting, quoting, or a
+constraint), and re-run. Verify with:
+```
+SELECT email, role FROM users ORDER BY role;
+```
+Should return 6 rows.
+
+**Path B (keep debugging the original approach):** on a real Linux
+environment (normal machine, or Termux + proot-distro Ubuntu):
 ```
 cd apps/backend
-npx prisma generate
 npx prisma db seed
+```
+If this still fails with `P1001: Can't reach database server`, see Pass 4
+for everything already ruled out — this has been a persistent, not-yet-
+root-caused issue specific to running Prisma's engine under `proot`.
+
+**Once either path gets the 6 demo accounts into the database:**
+```
 pnpm dev                                    # leave running in one terminal
 curl http://localhost:4000/api/v1/health    # run in a second terminal
 ```
+Expect `{ success: true, db: "connected" }`. That confirms Session 1 is
+fully done and Session 2 (auth) can start for real (not just in parallel
+with unverified data).
 
-Expect the seed to create/upsert the citizen, admin, and 4 partner demo
-accounts with no errors, and the health check to return
-`{ success: true, db: "connected" }`.
-
-Once that's confirmed, Session 1 is fully done and Session 2 (auth) can
-start. Migration is already confirmed working — nothing left to do there.
-Frontend scaffold is already done and boot-verified — nothing left to do
-there either. Root `package.json` regression is fixed — nothing left to do
-there either.
+Migration is already confirmed working — nothing left to do there. Frontend
+scaffold is already done and boot-verified — nothing left to do there
+either. Root `package.json` regression is fixed — nothing left to do there
+either.
 
 ---
 
