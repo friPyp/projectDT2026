@@ -2,14 +2,17 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { prisma } from "./prisma";
+import authRouter from "./routes/auth";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Session 1 scope: just prove the server boots and can reach the DB.
-// Real API routes (auth, challenges, notifications, admin) come in later
-// sessions per PROJECT_REFERENCE.md §5 — do not add them here yet.
+// Session 2 scope: auth only (register/login/logout, JWT, role
+// enforcement middleware). Challenges/notifications/admin routes are
+// later sessions per PROJECT_REFERENCE.md §5 — do not add them here yet.
+app.use("/api/v1/auth", authRouter);
+
 app.get("/api/v1/health", async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;

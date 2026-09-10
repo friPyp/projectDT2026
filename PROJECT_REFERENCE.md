@@ -133,8 +133,13 @@ dependency, not just "pick any open session."
 
 Tables: `users`, `partners`, `challenges`, `notifications`
 
-**users:** id, name, phone/email, passwordHash, role, createdAt
+**users:** id, name, phone/email, passwordHash, role, district (nullable),
+createdAt
 Role: `CITIZEN | PARTNER | ADMIN`
+District is nullable because seeded partner/admin accounts don't have one —
+only citizens provide it (see `/auth/register` in §8). Added in Session 1 to
+resolve a conflict between this section and §8; see PROJECT_STATUS.md §0
+Pass 1 and §7 for the full history.
 
 **partners:** id, userId (login), orgName, type (`UNIVERSITY | INDUSTRY`),
 domains (list of domain values this partner covers), createdAt
@@ -215,4 +220,8 @@ assign to a default/general partner if no domain match found)
 
 ## 9. Change log for this file (append, never silently edit sections above without a note here)
 
-_(no changes yet — initial version, replaces the SIH26032 reference doc)_
+- 2026-09-10 — §6 updated to document the nullable `district` field on
+  `users`, which was added to the actual schema back in Session 1 but never
+  reflected here until now (flagged as outstanding in PROJECT_STATUS.md §7
+  since Pass 1). No behavior changed — this just corrects the doc to match
+  the schema that's already been running in prod.
