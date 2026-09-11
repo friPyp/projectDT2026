@@ -455,13 +455,91 @@ Anything the next person picking this up needs to know:
 
 ---
 
+### Pass 8 — 2026-09-12 — frPyP — Session 3 (citizen submission + dashboard) built and confirmed working end-to-end
+Branch/commit: main, two commits (`45c11ab` backend, `d8f36da` frontend)
+Did:
+- Flagged and resolved a conflict before writing any code: §8's frozen
+  contract marks `POST /challenges` as "auto-routed on creation", but this
+  file's own Session 3/4 split says auto-routing is Session 4's job.
+  Confirmed with frPyP: **stay in-phase** — `POST /challenges` creates with
+  `status: SUBMITTED` and no `assignedPartnerId` for now; real auto-routing
+  arrives properly in Session 4, not folded in here.
+- Backend: `POST /api/v1/challenges` (CITIZEN only, via `requireRole`) and
+  `GET /api/v1/challenges` (CITIZEN only for now — returns the caller's own
+  challenges). PARTNER/ADMIN branches of `GET /challenges` deliberately not
+  built (those are Sessions 5/7's dashboards, not Session 3's).
+  `src/validation/challenges.ts` added, matching the frozen category enum.
+- Frontend (none existed before this pass — Session 2 was backend-only):
+  `/login`, `/register` pages; `/submit` (citizen challenge submission
+  form); `/dashboard` (own challenges + status badges). Added
+  `src/lib/api.ts` (fetch wrapper + typed helpers), `src/lib/auth.tsx`
+  (React context wrapping token/user in localStorage — nothing
+  security-sensitive lives here, every real permission check happens
+  server-side per §4's auth note), `src/lib/challengeLabels.ts`
+  (category/status → display label maps), `AppLayout` + `ProtectedRoute`
+  components.
+- No new libraries: `react-hook-form`, `zod`, `@tanstack/react-query`,
+  `react-router-dom` were already installed from Session 1 and cover
+  everything needed here — form validation is done by hand-parsing with
+  each schema rather than adding `@hookform/resolvers`.
+- Typechecked clean on both apps (`tsc -b --noEmit` on frontend, `tsc
+  --noEmit` on backend — backend shows only the same pre-existing
+  Prisma-generated-types gap as every previous pass in this sandbox, no
+  new errors from this pass's code). `oxlint` clean (one stylistic
+  fast-refresh warning on `lib/auth.tsx`, not a bug). `pnpm build` on the
+  frontend succeeds and produces a working production bundle.
+- Backend could not be booted or exercised in this sandbox — same
+  networking blocker as every earlier pass (`binaries.prisma.sh` /
+  Neon both outside this sandbox's allowlist). Handed off exact
+  verification steps to frPyP to run on a real machine.
+- **frPyP confirmed working, live, end-to-end:** registered a new citizen
+  → landed on empty dashboard → submitted a challenge (title, description,
+  category, district) → redirected to dashboard → challenge appears with a
+  "Submitted" badge → refresh keeps the session (token persisted) →
+  logout returns to `/login` → logging back in shows the same challenge
+  again.
+Files touched:
+- Backend: `src/routes/challenges.ts` (new), `src/validation/challenges.ts`
+  (new), `src/index.ts` (mounted the new router)
+- Frontend: `src/App.tsx`, `src/main.tsx` (both rewritten for real
+  routing + AuthProvider), `src/lib/api.ts` (new), `src/lib/auth.tsx`
+  (new), `src/lib/challengeLabels.ts` (new), `src/components/AppLayout.tsx`
+  (new), `src/components/ProtectedRoute.tsx` (new), `src/pages/LoginPage.tsx`,
+  `RegisterPage.tsx`, `SubmitChallengePage.tsx`, `DashboardPage.tsx` (all new)
+Decisions made:
+- POST /challenges stays SUBMITTED-only for now (see conflict note above) —
+  confirmed with frPyP before writing code.
+- GET /challenges only implements the CITIZEN branch for now, rather than
+  stubbing PARTNER/ADMIN branches ahead of Sessions 5/7 — a judgment call,
+  not explicitly asked, flagging here in case anyone disagrees with it.
+- Session needed frontend login/register pages to reach anything at all,
+  even though §5's session table lists "Auth" only under Session 2 (which
+  Pass 6 built backend-only). Confirmed with frPyP to fold minimal
+  login/register UI into Session 3 rather than leave a gap between
+  sessions.
+Deviations from spec: none beyond the confirmed in-phase decision above.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: nothing.
+Anything the next person picking this up needs to know:
+- **Session 3 is done and genuinely confirmed** — citizen registration,
+  login, challenge submission, and the dashboard all work end-to-end
+  against the real Neon database.
+- Every challenge lands as `SUBMITTED` with no partner assigned — that's
+  correct and intentional for this phase, not a bug to "fix" in Session 4.
+- **Session 4 (keyword-match categorization + auto-routing) is next** —
+  see §6.
+
+---
+
 ## 1. Current phase
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
 **Session 2 (auth) is done and confirmed** against the live server and real
 Neon database — see Pass 7. **Session 3 (citizen submission form +
-dashboard) is next** — see §6. Do not start Session 4 (categorization/
-auto-routing) or anything beyond Session 3's scope yet.
+dashboard) is done and confirmed** end-to-end, live — see Pass 8.
+**Session 4 (keyword-match categorization + auto-routing) is next** —
+see §6. Do not start Session 5 (partner dashboard) or anything beyond
+Session 4's scope yet.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -497,12 +575,15 @@ people editing the same module in the same day is how things get lost.
 - Endpoints implemented: `GET /api/v1/health` (DB-ping, not a real feature
   endpoint); `POST /api/v1/auth/register`, `POST /api/v1/auth/login`,
   `POST /api/v1/auth/logout` (written Pass 6, **verified working against
-  the real Neon database Pass 7**)
+  the real Neon database Pass 7**); `POST /api/v1/challenges`,
+  `GET /api/v1/challenges` (CITIZEN only — written Pass 8, **verified
+  working against the real Neon database Pass 8**)
 - Middleware implemented: `cors`, `express.json()`, `requireAuth`,
   `requireRole(...roles)` (Pass 6)
 - Modules scaffolded: `src/index.ts`, `src/prisma.ts`, `prisma/schema.prisma`,
-  `prisma/seed.ts`, `src/routes/auth.ts`, `src/middleware/auth.ts`,
-  `src/utils/jwt.ts`, `src/utils/errors.ts`, `src/validation/auth.ts`
+  `prisma/seed.ts`, `src/routes/auth.ts`, `src/routes/challenges.ts`,
+  `src/middleware/auth.ts`, `src/utils/jwt.ts`, `src/utils/errors.ts`,
+  `src/validation/auth.ts`, `src/validation/challenges.ts`
 
 ### Database
 - Prisma schema written: **Yes** (`apps/backend/prisma/schema.prisma`)
@@ -515,14 +596,19 @@ people editing the same module in the same day is how things get lost.
   all 6 expected rows.)
 
 ### Frontend
-- Pages implemented: _none_ — single placeholder page proving boot only
-- Shared components: _none_
+- Pages implemented: `/login`, `/register`, `/submit` (citizen challenge
+  submission form), `/dashboard` (own challenges + status) — all written
+  Pass 8, **verified working end-to-end against the real Neon database**
+- Shared components: `AppLayout` (nav bar + logout), `ProtectedRoute`
+  (redirects to `/login` if not a logged-in citizen) — Pass 8
 - Tailwind / React Router / React Hook Form / Zod / TanStack Query:
   **Yes, all installed and wired up** (Tailwind v4 via @tailwindcss/vite,
-  Router + QueryClientProvider active in main.tsx). `pnpm build` and
-  `pnpm dev` both verified working.
-- API client / TanStack Query hooks set up: **No** (provider wired, no
-  actual queries/hooks yet — that's session 3+)
+  Router + QueryClientProvider + AuthProvider active in main.tsx). `pnpm
+  build` and `pnpm dev` both verified working.
+- API client / TanStack Query hooks set up: **Yes** (`src/lib/api.ts`
+  fetch wrapper + typed helpers, `src/lib/auth.tsx` context wrapping
+  token/user, used by `useQuery`/`useMutation` in the dashboard and
+  submission form) — Pass 8
 
 ### Auth
 - JWT issuing/verifying: **Written Pass 6, verified working against the
@@ -535,9 +621,16 @@ people editing the same module in the same day is how things get lost.
 - Demo accounts seeded: **Yes — confirmed present in the real database**
   (see Database section above)
 
+### Citizen submission + dashboard
+- Challenge submission (`POST /challenges`): **Written and confirmed
+  working Pass 8** — creates with `status: SUBMITTED`, no partner assigned
+- Citizen dashboard (`GET /challenges`, own only): **Written and confirmed
+  working Pass 8**
+- Frontend login/register/submit/dashboard pages: **Written and confirmed
+  working end-to-end Pass 8**
+
 ### Categorization + routing
-- Keyword-match categorization function: **No** (session 4, not started —
-  correctly not built ahead of phase)
+- Keyword-match categorization function: **No** (session 4 — next up, see §6)
 - Auto-routing to seeded partners: **No** (session 4)
 
 ### Notifications
@@ -547,8 +640,9 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-Session 3 (citizen submission form + dashboard) is starting now — see §6
-for exact scope. Session 2 (auth) is fully done and confirmed (Pass 7).
+Nothing in progress — Session 3 is done and confirmed (Pass 8). Session 4
+(keyword-match categorization + auto-routing) hasn't been started yet —
+see §6 for exact scope before picking it up.
 
 ---
 
@@ -587,23 +681,28 @@ for exact scope. Session 2 (auth) is fully done and confirmed (Pass 7).
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Session 3 — Citizen submission + dashboard** (per PROJECT_REFERENCE.md §5,
-Citizen lane) — in progress now:
-- Submission form: title, description, category (fixed list of 8),
-  district — `POST /challenges` per §8
-- Citizen dashboard: list own challenges + current status —
-  `GET /challenges`
-- Do **not** build categorization/auto-routing logic yet (that's Session
-  4) — for now a submitted challenge can just land with `status:
-  SUBMITTED` and no assigned partner; Session 4 is what fills that in.
-  Don't build ahead into it even though it'll be tempting.
+**Session 4 — Backend: keyword-match categorization + auto-routing**
+(per PROJECT_REFERENCE.md §5, Partner+Routing lane) — not started yet:
+- A simple keyword-match function that confirms/refines the category a
+  citizen picked at submission (§7 checklist item 4: "Submitted challenge
+  gets auto-categorized/confirmed correctly").
+- On submission, auto-route the challenge to a seeded partner whose
+  `domains` include that category (§7 item 5), setting
+  `assignedPartnerId` and moving `status` from `SUBMITTED` to `ASSIGNED`.
+- This is what finally makes `POST /challenges` match §8's "(auto-routed
+  on creation)" annotation exactly — Sessions 1-3 deliberately left that
+  out of scope, this is where it belongs.
+- Do **not** build the partner dashboard itself yet (partners viewing/
+  acting on their assigned challenges is Session 5) or notifications
+  (Session 6) — just the categorization + assignment logic on the
+  existing `POST /challenges` endpoint.
 
 One environment note carried over: if testing from a phone via
 Termux+proot, expect Prisma's query engine to fail to connect even when
 the database is fine (Session 1, Pass 5). This sandbox has a different but
 equally blocking issue: no network access to Neon or Prisma's
-engine-download host at all (Session 2, Pass 6). Either way — verify on a
-normal machine with real internet access.
+engine-download host at all (Session 2, Pass 6; reconfirmed Session 3,
+Pass 8). Either way — verify on a normal machine with real internet access.
 
 ---
 
@@ -658,10 +757,19 @@ GET /api/v1/health   -> { success: true, db: "connected" }   (not part of the
 POST /api/v1/auth/register   body: { name, phone, password, district } -> { user, token }
 POST /api/v1/auth/login      body: { phone | email, password }         -> { user, token }
 POST /api/v1/auth/logout     (requires Authorization header)           -> { success: true }
+
+POST /api/v1/challenges   body: { title, description, category, district } -> Challenge
+                            (CITIZEN only; status: SUBMITTED, no assignedPartnerId —
+                            auto-routing is Session 4, not built yet, see §6)
+GET  /api/v1/challenges   -> Challenge[]  (CITIZEN only for now — returns the
+                            caller's own challenges; PARTNER "assigned" and
+                            ADMIN "all" branches are Sessions 5/7, not built yet)
 ```
-Code written Pass 6, matches PROJECT_REFERENCE.md §8 exactly. **Not yet
-verified against the real database** — see Pass 6 for why and for exact
-verification steps.
+Auth: written Pass 6, **verified working against the real database Pass 7**.
+Challenges: written Pass 8, **verified working against the real database
+Pass 8**. Both match PROJECT_REFERENCE.md §8 exactly, except `POST
+/challenges` intentionally doesn't auto-route yet (confirmed decision, see
+Pass 8) — everything else is exact.
 
 ---
 
