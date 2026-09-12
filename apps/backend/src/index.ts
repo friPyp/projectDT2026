@@ -11,10 +11,11 @@ app.use(express.json());
 
 app.use("/api/v1/auth", authRouter);
 
-// POST (create, citizen-only, now auto-categorizes + auto-routes per
-// Session 4) + GET (citizen's own list, Session 3). No /:id, no PATCH
-// team/status (PARTNER-only, Session 5). Notifications/admin routes are
-// later sessions per PROJECT_REFERENCE.md §5 — do not add them here yet.
+// POST (create, citizen-only, auto-categorizes + auto-routes per
+// Session 4) + GET (own list for CITIZEN, assigned list for PARTNER) +
+// PATCH /:id/team + PATCH /:id/status (both PARTNER-only, Session 5).
+// Notifications/admin routes are later sessions per PROJECT_REFERENCE.md
+// §5 — do not add them here yet.
 app.use("/api/v1/challenges", challengesRouter);
 
 app.get("/api/v1/health", async (_req, res) => {
