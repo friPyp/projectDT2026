@@ -3,6 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useAuth } from "../lib/auth";
 import { ApiError } from "../lib/api";
+import type { User } from "../lib/api";
+
+function dashboardPathFor(user: User): string {
+  return user.role === "PARTNER" ? "/partner" : "/dashboard";
+}
 
 interface LoginFormValues {
   identifier: string; // phone or email — §8 accepts either
@@ -28,11 +33,11 @@ export default function LoginPage() {
       // §8: POST /auth/login body accepts phone OR email — detect which
       // one the user typed rather than making them pick.
       const isEmail = values.identifier.includes("@");
-      await login({
+      const loggedInUser = await login({
         password: values.password,
         ...(isEmail ? { email: values.identifier } : { phone: values.identifier }),
       });
-      navigate("/dashboard");
+      navigate(dashboardPathFor(loggedInUser));
     } catch (err) {
       setServerError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {
