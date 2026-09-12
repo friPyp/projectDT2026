@@ -1,10 +1,16 @@
 import type { Response } from "express";
 
 // Matches PROJECT_REFERENCE.md §8's frozen error shape exactly.
-// Only the codes needed by Session 2 (auth) are used here —
-// CHALLENGE_NOT_FOUND / INVALID_STATUS_TRANSITION / NO_MATCHING_PARTNER
-// belong to later sessions and aren't referenced from this file.
-export type ErrorCode = "UNAUTHORIZED" | "FORBIDDEN" | "VALIDATION_ERROR";
+// CHALLENGE_NOT_FOUND and INVALID_STATUS_TRANSITION added in Session 5
+// (partner dashboard: team/status updates) — NO_MATCHING_PARTNER still
+// isn't used anywhere (per lib/routing.ts it's a silent fallback, not an
+// error response, so it may never need to be thrown from here).
+export type ErrorCode =
+  | "UNAUTHORIZED"
+  | "FORBIDDEN"
+  | "VALIDATION_ERROR"
+  | "CHALLENGE_NOT_FOUND"
+  | "INVALID_STATUS_TRANSITION";
 
 export function sendError(
   res: Response,
