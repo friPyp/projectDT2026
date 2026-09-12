@@ -26,3 +26,27 @@ export const createChallengeSchema = z.object({
 });
 
 export type CreateChallengeInput = z.infer<typeof createChallengeSchema>;
+
+// Session 5 (PROJECT_REFERENCE.md §5, §8): PATCH /challenges/:id/team —
+// PARTNER only, sets the plain-text team field.
+export const updateTeamSchema = z.object({
+  team: z.string().trim().min(1, "Team is required."),
+});
+
+export type UpdateTeamInput = z.infer<typeof updateTeamSchema>;
+
+// Session 5: PATCH /challenges/:id/status — PARTNER only. Only
+// IN_PROGRESS and COMPLETED are ever valid *targets* here (a partner
+// moves a challenge forward from ASSIGNED or IN_PROGRESS; they never set
+// it back to SUBMITTED/ASSIGNED, and never skip a step — that's enforced
+// separately in the route against the challenge's *current* status, not
+// just against this list of allowed values).
+const STATUS_TARGETS = ["IN_PROGRESS", "COMPLETED"] as const;
+
+export const updateStatusSchema = z.object({
+  status: z.enum(STATUS_TARGETS, {
+    errorMap: () => ({ message: "Status must be IN_PROGRESS or COMPLETED." }),
+  }),
+});
+
+export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
