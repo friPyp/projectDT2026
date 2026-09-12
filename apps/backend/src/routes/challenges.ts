@@ -3,15 +3,18 @@ import { prisma } from "../prisma";
 import { sendError } from "../utils/errors";
 import { createChallengeSchema } from "../validation/challenges";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { categorize } from "../lib/categorize";
+import { routeToPartner } from "../lib/routing";
 
 const router = Router();
 
 // POST /challenges — citizens only (PROJECT_REFERENCE.md §5 Session 3:
-// "Citizen challenge submission form"). Always created with status
-// SUBMITTED and no assignedPartnerId. §8 marks this route as eventually
-// "auto-routed on creation", but that's Session 4's keyword-match
-// categorization/routing job — deliberately not built yet, confirmed with
-// frPyP before writing this (see PROJECT_STATUS.md Pass 8).
+// "Citizen challenge submission form"). As of Session 4, this now matches
+// §8's "auto-routed on creation" annotation exactly: the keyword-match
+// categorizer confirms/refines the citizen's chosen category, then the
+// challenge is auto-routed to a matching seeded partner and created
+// straight into ASSIGNED status. (Sessions 1-3 deliberately left this out
+// of scope — see PROJECT_STATUS.md Pass 8 — this is where it belongs.)
 router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
   const parsed = createChallengeSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -19,13 +22,17 @@ router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
   }
   const { title, description, category, district } = parsed.data;
 
+  const finalCategory = categorize(title, description, category);
+  const assignedPartnerId = await routeToPartner(finalCategory);
+
   const challenge = await prisma.challenge.create({
     data: {
       title,
       description,
-      category,
+      category: finalCategory,
       district,
-      status: "SUBMITTED",
+      status: assignedPartnerId ? "ASSIGNED" : "SUBMITTED",
+      assignedPartnerId,
       citizenId: req.user!.id,
     },
   });
