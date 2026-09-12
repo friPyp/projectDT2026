@@ -529,6 +529,94 @@ Anything the next person picking this up needs to know:
 - **Session 4 (keyword-match categorization + auto-routing) is next** —
   see §6.
 
+### Pass 9 (in progress, checkpoint push) — 2026-09-12 — frPyP — Session 4 backend (categorization + auto-routing) written, not yet verified against the live DB
+Branch/commit: main (direct push), commit `fad9693`
+Did:
+- Checked PROJECT_REFERENCE.md §8 against this file's Session 3/4 split
+  before writing anything: §8 already marks `POST /challenges` as
+  "auto-routed on creation" — no actual conflict, Session 4 is exactly
+  what finishes that annotation. Nothing needed flagging.
+- `src/lib/categorize.ts` (new): keyword-match function per category
+  (§2's "AI-enabled categorization" = plain keyword match, no ML/API
+  call). Confirms the citizen's chosen category if it has any keyword
+  hit; otherwise refines to whichever category scored highest; if
+  nothing matches anything, keeps the citizen's original pick.
+- `src/lib/routing.ts` (new): matches the final category against seeded
+  partners' `domains` (Prisma `has` filter), assigns the earliest-seeded
+  matching partner. Falls back to the earliest-seeded partner overall if
+  no domain match is found, per §8's `NO_MATCHING_PARTNER` fallback
+  wording ("assign to a default/general partner", not an error response).
+  Checked the current seed data (`prisma/seed.ts`): the 4 seeded
+  partners' domains together cover all 8 categories with no gaps, so
+  this fallback branch isn't expected to actually trigger right now —
+  it's there to satisfy the frozen contract, not because it's needed
+  against today's seed data.
+- `src/routes/challenges.ts`: `POST /challenges` now calls `categorize()`
+  then `routeToPartner()`, and creates the challenge with the resulting
+  `category`, `assignedPartnerId`, and `status: "ASSIGNED"` (falls back to
+  `SUBMITTED` only if there are somehow zero partners in the DB at all).
+- `src/index.ts`: updated the comment above the challenges route mount to
+  stop saying "no auto-routing" — comment-only, no logic change.
+- No new libraries — this is plain string matching against `.includes()`,
+  nothing needed beyond what's already installed.
+- Did **not** touch the partner dashboard (Session 5) or notifications
+  (Session 6) — `GET /challenges` is untouched, still CITIZEN-only.
+- Could not run `pnpm install`'s postinstall or `npx prisma generate`
+  fully in this sandbox — same `binaries.prisma.sh` network-allowlist
+  block as every earlier pass (Pass 6, Pass 8). `npx tsc --noEmit` shows
+  only the same pre-existing `@prisma/client` type-export gap as always
+  (`Category`/`Role`/`User` not exported until `generate` runs somewhere
+  with real network access) — no new type errors from this pass's code.
+- Verified the categorization logic itself in isolation (copied the pure
+  function, no DB/Prisma involved, into a throwaway script — not
+  committed): 4 cases including a keyword-override case (chosen category
+  had no keyword hits, description matched a different category more
+  strongly) all produced the expected category. Deleted the scratch file
+  afterward.
+- Could not exercise `routeToPartner()` or the full `POST /challenges`
+  flow against the real Neon database — this sandbox has no network path
+  to Neon at all (confirmed: a raw TCP connection attempt to the Neon
+  host timed out), same category of blocker as Session 2/3's passes.
+Files touched: `apps/backend/src/lib/categorize.ts` (new),
+  `apps/backend/src/lib/routing.ts` (new),
+  `apps/backend/src/routes/challenges.ts`, `apps/backend/src/index.ts`
+  (comment only). Nothing already-marked-done was rewritten.
+Decisions made:
+- Fallback-partner choice (earliest-seeded partner, when no domain
+  matches) was a judgment call, not explicitly specified beyond "a
+  default/general partner" in §8 — flagging here in case frPyP wants a
+  specific partner designated as the fallback instead once this is
+  reviewed.
+Deviations from spec: none.
+Bugs found/fixed: none.
+Left in a broken/incomplete state:
+- **Not yet verified against the live server/database.** Same pattern as
+  Pass 6/8 — needs confirming on a machine with real network access
+  before this pass can be marked closed.
+Anything the next person picking this up needs to know:
+- Verify on a real machine:
+  ```
+  git pull
+  cd apps/backend
+  pnpm install
+  npx prisma generate
+  pnpm dev
+  ```
+  Then log in as the seeded citizen and `POST /api/v1/challenges` with a
+  body like `{"title":"Village well broken","description":"No drinking
+  water access for weeks","category":"PUBLIC_ADMIN","district":"Ranchi"}`
+  — expect the response to come back with `category: "WATER"` (keyword
+  override) and `status: "ASSIGNED"` with an `assignedPartnerId` set to
+  partner3's id (Ranchi Institute of Health Sciences, seeded with
+  `WATER` in its domains). Also try a submission whose category and
+  keywords agree (e.g. an EDUCATION-worded challenge submitted as
+  EDUCATION) to confirm the "confirm" path, not just the "refine" path.
+  Then re-run checklist items 4 and 5 from PROJECT_REFERENCE.md §7.
+- Once that's confirmed, update this entry (or add a short closing note)
+  and this pass can be considered closed. Session 5 (partner dashboard:
+  assigned challenges list, set team, status transitions) is next — see
+  §6 — do not start it before Session 4 is confirmed working live.
+
 ---
 
 ## 1. Current phase
@@ -537,9 +625,11 @@ Anything the next person picking this up needs to know:
 **Session 2 (auth) is done and confirmed** against the live server and real
 Neon database — see Pass 7. **Session 3 (citizen submission form +
 dashboard) is done and confirmed** end-to-end, live — see Pass 8.
-**Session 4 (keyword-match categorization + auto-routing) is next** —
-see §6. Do not start Session 5 (partner dashboard) or anything beyond
-Session 4's scope yet.
+**Session 4 (keyword-match categorization + auto-routing) is written but
+not yet verified against the live database** — see Pass 9. Verify it
+first, then Session 5 (partner dashboard) is next — see §6. Do not start
+Session 5 or anything beyond Session 4's scope until Session 4 is
+confirmed working.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -575,15 +665,18 @@ people editing the same module in the same day is how things get lost.
 - Endpoints implemented: `GET /api/v1/health` (DB-ping, not a real feature
   endpoint); `POST /api/v1/auth/register`, `POST /api/v1/auth/login`,
   `POST /api/v1/auth/logout` (written Pass 6, **verified working against
-  the real Neon database Pass 7**); `POST /api/v1/challenges`,
-  `GET /api/v1/challenges` (CITIZEN only — written Pass 8, **verified
-  working against the real Neon database Pass 8**)
+  the real Neon database Pass 7**); `POST /api/v1/challenges` (written
+  Pass 8, **auto-categorization + auto-routing added Pass 9, not yet
+  verified live — see Pass 9**), `GET /api/v1/challenges` (CITIZEN only —
+  written Pass 8, **verified working against the real Neon database
+  Pass 8**, unchanged by Pass 9)
 - Middleware implemented: `cors`, `express.json()`, `requireAuth`,
   `requireRole(...roles)` (Pass 6)
 - Modules scaffolded: `src/index.ts`, `src/prisma.ts`, `prisma/schema.prisma`,
   `prisma/seed.ts`, `src/routes/auth.ts`, `src/routes/challenges.ts`,
   `src/middleware/auth.ts`, `src/utils/jwt.ts`, `src/utils/errors.ts`,
-  `src/validation/auth.ts`, `src/validation/challenges.ts`
+  `src/validation/auth.ts`, `src/validation/challenges.ts`,
+  `src/lib/categorize.ts`, `src/lib/routing.ts` (both new, Pass 9)
 
 ### Database
 - Prisma schema written: **Yes** (`apps/backend/prisma/schema.prisma`)
@@ -630,8 +723,14 @@ people editing the same module in the same day is how things get lost.
   working end-to-end Pass 8**
 
 ### Categorization + routing
-- Keyword-match categorization function: **No** (session 4 — next up, see §6)
-- Auto-routing to seeded partners: **No** (session 4)
+- Keyword-match categorization function: **Written Pass 9** (`src/lib/
+  categorize.ts`) — confirms citizen's chosen category or refines to a
+  better keyword match. Verified in isolation (pure-logic test, no DB);
+  **not yet verified live against the real database**.
+- Auto-routing to seeded partners: **Written Pass 9** (`src/lib/
+  routing.ts`) — `POST /challenges` now sets `assignedPartnerId` and
+  `status: "ASSIGNED"` directly. **Not yet verified live** — see Pass 9
+  for exact steps to confirm on a real machine.
 
 ### Notifications
 - Implemented: **No** (session 6)
@@ -640,9 +739,10 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-Nothing in progress — Session 3 is done and confirmed (Pass 8). Session 4
-(keyword-match categorization + auto-routing) hasn't been started yet —
-see §6 for exact scope before picking it up.
+Session 4 (keyword-match categorization + auto-routing) is **written but
+not yet verified against the live database** — see Pass 9 for exact
+verification steps. Once confirmed, Session 5 (partner dashboard) is
+next — see §6.
 
 ---
 
@@ -681,28 +781,38 @@ see §6 for exact scope before picking it up.
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Session 4 — Backend: keyword-match categorization + auto-routing**
-(per PROJECT_REFERENCE.md §5, Partner+Routing lane) — not started yet:
-- A simple keyword-match function that confirms/refines the category a
-  citizen picked at submission (§7 checklist item 4: "Submitted challenge
-  gets auto-categorized/confirmed correctly").
-- On submission, auto-route the challenge to a seeded partner whose
-  `domains` include that category (§7 item 5), setting
-  `assignedPartnerId` and moving `status` from `SUBMITTED` to `ASSIGNED`.
-- This is what finally makes `POST /challenges` match §8's "(auto-routed
-  on creation)" annotation exactly — Sessions 1-3 deliberately left that
-  out of scope, this is where it belongs.
-- Do **not** build the partner dashboard itself yet (partners viewing/
-  acting on their assigned challenges is Session 5) or notifications
-  (Session 6) — just the categorization + assignment logic on the
-  existing `POST /challenges` endpoint.
+**Immediate: verify Session 4 (Pass 9) against the live database** — the
+code is written (`src/lib/categorize.ts`, `src/lib/routing.ts`, updated
+`POST /challenges`), but has not been run against the real Neon database
+yet. See Pass 9's "Anything the next person picking this up needs to
+know" for the exact commands and a concrete test case. Do this before
+starting Session 5.
+
+**After that's confirmed: Session 5 — Partner dashboard**
+(per PROJECT_REFERENCE.md §5, Partner+Routing lane):
+- Partner login (already works, from Session 2) leads to a dashboard
+  listing challenges where `assignedPartnerId` matches the logged-in
+  partner (extend `GET /api/v1/challenges`'s PARTNER branch — currently
+  only the CITIZEN branch is built, see `src/routes/challenges.ts`).
+- `PATCH /challenges/:id/team` (PARTNER only, per §8) — set the plain-text
+  `team` field.
+- `PATCH /challenges/:id/status` (PARTNER only, per §8) — validated
+  transitions only: `ASSIGNED → IN_PROGRESS → COMPLETED`. Reject
+  skipping a step (e.g. `ASSIGNED → COMPLETED` directly) with the
+  `INVALID_STATUS_TRANSITION` error code from §8.
+- A partner must only see/act on their own assigned challenges — not
+  challenges assigned to a different partner (§7 checklist items 7, 8, 13).
+- Do **not** build notifications yet (Session 6) or the admin dashboard
+  (Session 7) — just the partner's own view and actions on their
+  assigned challenges.
 
 One environment note carried over: if testing from a phone via
 Termux+proot, expect Prisma's query engine to fail to connect even when
-the database is fine (Session 1, Pass 5). This sandbox has a different but
-equally blocking issue: no network access to Neon or Prisma's
-engine-download host at all (Session 2, Pass 6; reconfirmed Session 3,
-Pass 8). Either way — verify on a normal machine with real internet access.
+the database is fine (Session 1, Pass 5). Sandboxed dev environments used
+for earlier passes have a different but equally blocking issue: no
+network access to Neon or Prisma's engine-download host at all (Session 2,
+Pass 6; reconfirmed Session 3 Pass 8; reconfirmed Session 4 Pass 9).
+Either way — verify on a normal machine with real internet access.
 
 ---
 
@@ -759,17 +869,19 @@ POST /api/v1/auth/login      body: { phone | email, password }         -> { user
 POST /api/v1/auth/logout     (requires Authorization header)           -> { success: true }
 
 POST /api/v1/challenges   body: { title, description, category, district } -> Challenge
-                            (CITIZEN only; status: SUBMITTED, no assignedPartnerId —
-                            auto-routing is Session 4, not built yet, see §6)
+                            (CITIZEN only; category is confirmed/refined by
+                            keyword match, status: ASSIGNED with
+                            assignedPartnerId set via auto-routing — Pass 9,
+                            not yet verified live, see §0 Pass 9 / §4)
 GET  /api/v1/challenges   -> Challenge[]  (CITIZEN only for now — returns the
                             caller's own challenges; PARTNER "assigned" and
                             ADMIN "all" branches are Sessions 5/7, not built yet)
 ```
 Auth: written Pass 6, **verified working against the real database Pass 7**.
-Challenges: written Pass 8, **verified working against the real database
-Pass 8**. Both match PROJECT_REFERENCE.md §8 exactly, except `POST
-/challenges` intentionally doesn't auto-route yet (confirmed decision, see
-Pass 8) — everything else is exact.
+Challenges POST/GET base behavior: written Pass 8, **verified working
+against the real database Pass 8**. Categorization + auto-routing on POST:
+written Pass 9, **not yet verified against the real database** — see
+Pass 9. Matches PROJECT_REFERENCE.md §8 exactly once verified.
 
 ---
 
