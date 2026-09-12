@@ -3,11 +3,25 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import SubmitChallengePage from "./pages/SubmitChallengePage";
 import DashboardPage from "./pages/DashboardPage";
+import PartnerDashboardPage from "./pages/PartnerDashboardPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { useAuth } from "./lib/auth";
 
-// Session 3 scope: citizen submission form + dashboard, plus the
-// login/register pages needed to reach them at all. Partner/admin pages
-// (Sessions 5/7) don't exist yet — do not add routes for them here.
+// Session 5: send an already-logged-in user to the dashboard for their
+// own role instead of always assuming CITIZEN. Unauthenticated users still
+// fall through to /login via ProtectedRoute on whichever page they land on.
+function HomeRedirect() {
+  const { user } = useAuth();
+  if (user?.role === "PARTNER") {
+    return <Navigate to="/partner" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
+}
+
+// Session 3: citizen submission form + dashboard, login/register pages.
+// Session 5 adds /partner (assigned challenges, set team, status
+// transitions). Admin's page (Session 7) still doesn't exist — do not add
+// a route for it here.
 function App() {
   return (
     <Routes>
@@ -16,7 +30,7 @@ function App() {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute role="CITIZEN">
             <DashboardPage />
           </ProtectedRoute>
         }
@@ -24,12 +38,20 @@ function App() {
       <Route
         path="/submit"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute role="CITIZEN">
             <SubmitChallengePage />
           </ProtectedRoute>
         }
       />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route
+        path="/partner"
+        element={
+          <ProtectedRoute role="PARTNER">
+            <PartnerDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<HomeRedirect />} />
     </Routes>
   );
 }
