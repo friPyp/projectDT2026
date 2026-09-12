@@ -143,3 +143,25 @@ export function createChallenge(data: {
 export function getMyChallenges() {
   return apiFetch<Challenge[]>("/challenges");
 }
+
+// ---- Partner dashboard (Session 5) ----
+// GET /challenges is role-aware server-side: same endpoint as above,
+// backend returns the assigned list for a PARTNER caller. Separate
+// function name here just for readability at the call site.
+export function getAssignedChallenges() {
+  return apiFetch<Challenge[]>("/challenges");
+}
+
+export function updateChallengeTeam(id: string, team: string) {
+  return apiFetch<Challenge>(`/challenges/${id}/team`, {
+    method: "PATCH",
+    body: JSON.stringify({ team }),
+  });
+}
+
+export function updateChallengeStatus(id: string, status: "IN_PROGRESS" | "COMPLETED") {
+  return apiFetch<Challenge>(`/challenges/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
