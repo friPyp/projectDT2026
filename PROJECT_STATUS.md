@@ -743,21 +743,81 @@ Anything the next person picking this up needs to know:
 
 ---
 
+### Pass 11 — 2026-09-12 — frPyP — Session 4 + Session 5 CLOSED: both verified live against the real Neon database
+
+Branch/commit: main (direct push)
+Environment: verified on a real Fedora machine with genuine internet
+  access (not a sandbox) — this is the first pass in the project able to
+  actually reach Neon's Postgres port. Confirms the root cause tracked in
+  §5 since Pass 4 was environment-only, not a code or data problem.
+Ran the full §6 combined checklist against the live server + live
+  database, in order:
+1. `GET /api/v1/health` → `{"success":true,"db":"connected"}`.
+2. Logged in as `citizen@demo.local` — token issued correctly.
+3. Session 4 "refine" path: submitted a WATER-worded challenge tagged
+   `PUBLIC_ADMIN` → came back `category: "WATER"`, `status: "ASSIGNED"`,
+   `assignedPartnerId` set to partner3 (Ranchi Institute of Health
+   Sciences). Matches spec.
+4. Session 4 "confirm" path: submitted an EDUCATION-worded challenge
+   tagged `EDUCATION` → came back unchanged, auto-assigned to partner1
+   (Jharkhand State University). Matches spec.
+5. Session 5 partner isolation: partner3 (`GET /challenges`) saw only
+   the WATER challenge; partner1 saw only the EDUCATION challenge.
+   Matches spec.
+6. Session 5 set-team + valid transition: `PATCH .../team` on the WATER
+   challenge set `team: "Team Alpha"`; `PATCH .../status` moved it
+   `ASSIGNED -> IN_PROGRESS` correctly.
+7. Session 5 invalid transition: partner1 tried `ASSIGNED -> COMPLETED`
+   directly on the EDUCATION challenge (skipping `IN_PROGRESS`) → 409
+   `INVALID_STATUS_TRANSITION`, exactly as spec'd.
+8. Session 5 valid finish + ownership: the WATER challenge moved
+   `IN_PROGRESS -> COMPLETED` cleanly; partner3 then tried to edit the
+   EDUCATION challenge (not theirs) → 403 `FORBIDDEN`.
+All 8 steps matched expected behavior exactly. No bugs found.
+Not covered by this pass: the `/partner` frontend page itself was not
+  opened in a browser — only the backend endpoints it calls were
+  exercised directly (via curl). Those endpoints are now confirmed
+  live, so the page is very likely fine since it's a thin consumer of
+  them, but nobody has actually clicked through it yet. Worth a quick
+  manual pass before calling Session 5 fully done at the UI level —
+  not a blocker for starting Session 6.
+Gotcha worth flagging for whoever tests next: `POST /auth/login`'s
+  `phone` field does an exact-match lookup by phone number — sending an
+  email address under the `phone` key (instead of using the separate
+  `email` key) returns `UNAUTHORIZED`, not a helpful validation error.
+  Not a bug (the endpoint is documented as accepting phone OR email as
+  separate fields, see §9) — just easy to trip over when testing by
+  hand.
+Files touched: none — this pass was verification only, no code changed.
+Decisions made: none new.
+Deviations from spec: none.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: nothing. Both sessions fully closed
+  at the API level.
+Anything the next person needs to know: Session 6 (notifications) is
+  next — see §6 for the updated task. Stick to notifications only; do
+  not start Session 7 (admin dashboard) alongside it.
+
+---
+
 ## 1. Current phase
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
 **Session 2 (auth) is done and confirmed** against the live server and real
 Neon database — see Pass 7. **Session 3 (citizen submission form +
 dashboard) is done and confirmed** end-to-end, live — see Pass 8.
-**Session 4 (keyword-match categorization + auto-routing) is written but
-not yet verified against the live database** — see Pass 9. **Session 5
-(partner dashboard: assigned list, set team, status transitions) is also
-now written, but not yet verified live either** — see Pass 10. Session 5
-was written ahead of Session 4's live verification as a one-off,
-director-approved exception to the normal phase-order rule (Pass 10) —
-this is not a new standing policy, just a timebound call. Both sessions
-need one combined live-verification pass — see §6 — before Session 6
-(notifications) starts.
+**Session 4 (keyword-match categorization + auto-routing) is done and
+confirmed** against the live server and real Neon database — see Pass
+11. **Session 5 (partner dashboard: assigned list, set team, status
+transitions) is done and confirmed** at the API level against the same
+live database — see Pass 11 (the `/partner` frontend page itself hasn't
+been manually clicked through yet, though the endpoints it relies on are
+now verified). Session 5 was originally written ahead of Session 4's
+live verification as a one-off, director-approved exception to the
+normal phase-order rule (Pass 10) — that exception is now closed out,
+both were verified together as required, and phase-order discipline is
+back to normal (one session at a time) going forward. **Session 6
+(notifications) is next** — see §6.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -794,12 +854,12 @@ people editing the same module in the same day is how things get lost.
   endpoint); `POST /api/v1/auth/register`, `POST /api/v1/auth/login`,
   `POST /api/v1/auth/logout` (written Pass 6, **verified working against
   the real Neon database Pass 7**); `POST /api/v1/challenges` (written
-  Pass 8, **auto-categorization + auto-routing added Pass 9, not yet
-  verified live — see Pass 9**), `GET /api/v1/challenges` (CITIZEN branch
+  Pass 8, **auto-categorization + auto-routing added Pass 9, verified
+  live Pass 11**), `GET /api/v1/challenges` (CITIZEN branch
   written Pass 8, **verified working against the real Neon database
-  Pass 8**; PARTNER branch added Pass 10, **not yet verified live**),
+  Pass 8**; PARTNER branch added Pass 10, **verified live Pass 11**),
   `PATCH /api/v1/challenges/:id/team`, `PATCH /api/v1/challenges/:id/status`
-  (both PARTNER only, both new Pass 10, **not yet verified live**)
+  (both PARTNER only, both new Pass 10, **verified live Pass 11**)
 - Middleware implemented: `cors`, `express.json()`, `requireAuth`,
   `requireRole(...roles)` (Pass 6)
 - Modules scaffolded: `src/index.ts`, `src/prisma.ts`, `prisma/schema.prisma`,
@@ -823,7 +883,8 @@ people editing the same module in the same day is how things get lost.
   submission form), `/dashboard` (own challenges + status) — all written
   Pass 8, **verified working end-to-end against the real Neon database**;
   `/partner` (assigned challenges, set team, move status forward) — new
-  Pass 10, **not yet verified live**
+  Pass 10; the endpoints it calls are **verified live Pass 11**, but the
+  page itself hasn't been manually clicked through in a browser yet
 - Shared components: `AppLayout` (nav bar + logout) — Pass 8;
   `ProtectedRoute` — Pass 8, generalized Pass 10 with an optional `role`
   prop (defaults to `CITIZEN`, so its original behavior for existing pages
@@ -862,29 +923,32 @@ people editing the same module in the same day is how things get lost.
 ### Categorization + routing
 - Keyword-match categorization function: **Written Pass 9** (`src/lib/
   categorize.ts`) — confirms citizen's chosen category or refines to a
-  better keyword match. Verified in isolation (pure-logic test, no DB);
-  **not yet verified live against the real database**.
+  better keyword match. **Verified live against the real database —
+  Pass 11** (both the refine and confirm paths).
 - Auto-routing to seeded partners: **Written Pass 9** (`src/lib/
   routing.ts`) — `POST /challenges` now sets `assignedPartnerId` and
-  `status: "ASSIGNED"` directly. **Not yet verified live** — see Pass 9
-  for exact steps to confirm on a real machine.
+  `status: "ASSIGNED"` directly. **Verified live against the real
+  database — Pass 11.**
 
 ### Partner dashboard
 - `GET /challenges` PARTNER branch: **Written Pass 10** — returns only
   challenges where `assignedPartnerId` matches the logged-in partner
-  (looked up via `Partner.userId`). **Not yet verified live.**
+  (looked up via `Partner.userId`). **Verified live — Pass 11**
+  (confirmed partner3 and partner1 each see only their own).
 - `PATCH /challenges/:id/team`: **Written Pass 10** — PARTNER only,
-  ownership-checked, sets the plain-text `team` field. **Not yet verified
-  live.**
+  ownership-checked, sets the plain-text `team` field. **Verified live —
+  Pass 11.**
 - `PATCH /challenges/:id/status`: **Written Pass 10** — PARTNER only,
   ownership-checked, forward-only transitions
   (`ASSIGNED -> IN_PROGRESS -> COMPLETED`), rejects any skip or backward
-  move with `INVALID_STATUS_TRANSITION`. **Not yet verified live** — the
-  transition rules themselves were checked in isolation (no DB) and all 7
-  test cases passed, see Pass 10.
+  move with `INVALID_STATUS_TRANSITION`. **Verified live — Pass 11**
+  (valid forward transition, invalid skip, and final completion all
+  confirmed against the real database; ownership check also confirmed —
+  a partner attempting to modify another partner's challenge gets 403).
 - Frontend `/partner` page: **Written Pass 10** — lists assigned
   challenges, inline team-name save, single "move to next status" button.
-  **Not yet verified live.**
+  The endpoints it calls are verified live (Pass 11), but the page
+  itself hasn't been manually opened/clicked through in a browser yet.
 
 ### Notifications
 - Implemented: **No** (session 6)
@@ -893,13 +957,13 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-Session 4 (categorization + auto-routing) and Session 5 (partner
-dashboard) are **both written but not yet verified against the live
-database** — see Pass 9 and Pass 10. Session 5 was written ahead of
-Session 4's verification as a one-off, director-approved exception (Pass
-10) so both could be verified together in one pass. See §6 for the
-combined verification checklist. Once both are confirmed, Session 6
-(notifications) is next.
+Nothing in progress right now. Session 4 (categorization + auto-routing)
+and Session 5 (partner dashboard) are both closed — verified live
+against the real database, Pass 11. Session 6 (notifications) hasn't
+been started yet — see §6 for its spec. Optional, non-blocking
+follow-up: manually click through the `/partner` frontend page in a
+browser at some point (only its backend endpoints have been tested so
+far, see §3).
 
 ---
 
@@ -942,68 +1006,29 @@ combined verification checklist. Once both are confirmed, Session 6
   from the egress layer on every URL under it, so `prisma generate`
   couldn't run either. Not a new bug — same underlying constraint as
   Pass 4/6/8/9, just diagnosed a bit more precisely this time.
+- **Resolved for good, Pass 11:** confirmed once more that a fresh
+  sandbox still can't reach Neon's Postgres port (same symptom as Pass
+  10), but running the exact same steps on a real machine with genuine
+  internet access worked with zero issues — `pnpm install`, `prisma
+  generate`, `pnpm dev`, and every DB-backed request all worked on the
+  first try. This closes the loop: it was always environment-only, never
+  a code or data problem. No further action needed — just keep doing DB
+  work on real hardware, not a sandbox.
+- **Not a bug, just a testing gotcha (Pass 11):** `POST /auth/login`
+  takes `phone` and `email` as two separate optional fields (see §9,
+  §validation/auth.ts) — putting an email address under the `phone` key
+  looks up by phone number literally and returns `UNAUTHORIZED` rather
+  than a clearer validation error. Worth remembering when testing by
+  hand; not something to "fix" since the contract itself is correct.
 
 ---
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Immediate: verify Session 4 AND Session 5 together against the live
-database**, on a machine with real network access to Neon (no sandbox
-used for this project so far has been able to reach it — see §5).
+**Session 4 and Session 5's combined live-verification checklist is
+done** (Pass 11, all 8 steps passed against the real database — see §0).
 
-```
-git pull
-cd apps/backend
-pnpm install
-npx prisma generate
-pnpm dev
-```
-
-In a second terminal (or via Postman/Insomnia):
-
-1. **Log in as the seeded citizen** (`citizen@demo.local` / `Demo@1234`)
-   via `POST /api/v1/auth/login`. Grab the `token`.
-2. **Session 4 — "refine" path:** `POST /api/v1/challenges` with
-   `{"title":"Village well broken","description":"No drinking water
-   access for weeks","category":"PUBLIC_ADMIN","district":"Ranchi"}`.
-   Expect `category: "WATER"` (keyword override), `status: "ASSIGNED"`,
-   `assignedPartnerId` set to partner3's id (Ranchi Institute of Health
-   Sciences, seeded with `WATER`).
-3. **Session 4 — "confirm" path:** `POST /api/v1/challenges` with a
-   challenge whose stated category already matches its wording, e.g.
-   `{"title":"School needs new textbooks","description":"Students lack
-   updated books for the syllabus","category":"EDUCATION","district":
-   "Dhanbad"}`. Expect `category: "EDUCATION"` unchanged, `status:
-   "ASSIGNED"`, `assignedPartnerId` set to whichever partner covers
-   EDUCATION.
-4. **Session 5 — partner sees only their own:** log in as `partner3@demo.local`
-   / `Demo@1234` and `GET /api/v1/challenges`. Expect to see the WATER
-   challenge from step 2 and NOT the EDUCATION one from step 3. Then log
-   in as the EDUCATION partner and confirm the reverse.
-5. **Session 5 — set team:** as partner3, `PATCH /api/v1/challenges/:id/team`
-   with `{"team":"Team Alpha"}` on the WATER challenge's id. Expect the
-   updated challenge back with `team: "Team Alpha"`.
-6. **Session 5 — valid transition:** `PATCH /api/v1/challenges/:id/status`
-   with `{"status":"IN_PROGRESS"}` on the same challenge. Expect success,
-   `status: "IN_PROGRESS"`.
-7. **Session 5 — invalid transition (skip):** try `PATCH .../status` with
-   `{"status":"COMPLETED"}` on a *different* challenge that's still
-   `ASSIGNED` (skipping `IN_PROGRESS`). Expect a 409 with
-   `error.code: "INVALID_STATUS_TRANSITION"`.
-8. **Session 5 — valid transition (finish):** `PATCH .../status` with
-   `{"status":"COMPLETED"}` on the challenge from step 6 (now
-   `IN_PROGRESS`). Expect success.
-9. **Session 5 — ownership enforced:** try step 5 or 6's PATCH calls
-   using partner3's token but targeting a challenge assigned to a
-   *different* partner. Expect a 403 `FORBIDDEN`.
-10. Re-run PROJECT_REFERENCE.md §7 checklist items 4, 5, 6, 7, 8, 13 as a
-    final sanity pass over all of the above.
-
-If anything in steps 2-10 doesn't match, that's a real bug to log here
-(not a reason to quietly patch and move on) — note which step failed and
-the actual response body.
-
-**Once both are confirmed: Session 6 — Notifications**
+**Immediate: Session 6 — Notifications**
 (per PROJECT_REFERENCE.md §5, Partner+Routing lane):
 - Two events only: `CHALLENGE_ASSIGNED` (fired when auto-routing assigns a
   partner in `POST /challenges`) and `STATUS_UPDATED` (fired on
@@ -1011,14 +1036,24 @@ the actual response body.
 - `GET /notifications` and `PATCH /notifications/:id/read` per §8.
 - Citizen sees their own notifications (e.g. a bell/list on their
   dashboard). Do **not** build the admin dashboard yet (Session 7).
+- Stick to just these two events and these two endpoints for this
+  session — no polling/real-time layer (see §7, already decided against
+  project-wide), no notification preferences/settings, nothing beyond
+  what's listed above.
+
+Optional, non-blocking, whenever convenient: manually open the
+`/partner` page in a browser and click through it once (see §3/§4) —
+its endpoints are verified live, but nobody has looked at the actual UI
+yet.
 
 One environment note carried over: if testing from a phone via
 Termux+proot, expect Prisma's query engine to fail to connect even when
 the database is fine (Session 1, Pass 5). Sandboxed dev environments used
-for every pass since (Pass 6, 8, 9, 10) have a different but equally
+for every pass since (Pass 6, 8, 9, 10) had a different but equally
 blocking issue: no network access to Neon's Postgres port or to Prisma's
-engine-download host at all. Either way — verify on a normal machine with
-real internet access.
+engine-download host at all. **Pass 11 confirmed the fix is simply to do
+DB-touching work on a real machine with real internet access** — worked
+immediately, no other changes needed.
 
 ---
 
@@ -1054,9 +1089,10 @@ real internet access.
   raised explicitly before proceeding — not decided silently — and
   devansh4281 (project director) authorized it given the project's time
   constraints, on the condition both sessions get verified live together
-  in one combined pass (see §6). This is a one-off call for this
-  situation, not a change to the standing rule — default back to
-  one-session-at-a-time unless told otherwise again.
+  in one combined pass (see §6). **That condition has now been met (Pass
+  11) — the exception is closed.** This was a one-off call for this
+  situation, not a change to the standing rule — back to
+  one-session-at-a-time starting with Session 6.
 
 ---
 
@@ -1088,27 +1124,27 @@ POST /api/v1/challenges   body: { title, description, category, district } -> Ch
                             (CITIZEN only; category is confirmed/refined by
                             keyword match, status: ASSIGNED with
                             assignedPartnerId set via auto-routing — Pass 9,
-                            not yet verified live, see §0 Pass 9 / §4)
+                            verified live Pass 11)
 GET  /api/v1/challenges   -> Challenge[]  (CITIZEN: own challenges — Pass 8,
                             verified live. PARTNER: assigned challenges only
-                            — Pass 10, not yet verified live. ADMIN "all" is
+                            — Pass 10, verified live Pass 11. ADMIN "all" is
                             still Session 7, not built yet.)
 PATCH /api/v1/challenges/:id/team    body: { team } -> Challenge
-                            (PARTNER only, ownership-checked — Pass 10, not
-                            yet verified live)
+                            (PARTNER only, ownership-checked — Pass 10,
+                            verified live Pass 11)
 PATCH /api/v1/challenges/:id/status  body: { status } -> Challenge
                             (PARTNER only, ownership-checked, forward-only
                             transitions ASSIGNED -> IN_PROGRESS -> COMPLETED,
                             409 INVALID_STATUS_TRANSITION otherwise — Pass 10,
-                            not yet verified live)
+                            verified live Pass 11, including the ownership
+                            check)
 ```
 Auth: written Pass 6, **verified working against the real database Pass 7**.
 Challenges POST/GET base behavior: written Pass 8, **verified working
 against the real database Pass 8**. Categorization + auto-routing on POST,
-GET's PARTNER branch, and both PATCH endpoints: written Pass 9/10, **not
-yet verified against the real database** — see §6 for the combined
-verification checklist. Matches PROJECT_REFERENCE.md §8 exactly once
-verified.
+GET's PARTNER branch, and both PATCH endpoints: written Pass 9/10,
+**verified live against the real database — Pass 11**. Matches
+PROJECT_REFERENCE.md §8 exactly.
 
 ---
 
