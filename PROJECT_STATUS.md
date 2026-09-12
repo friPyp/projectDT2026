@@ -832,6 +832,16 @@ people editing the same module in the same day is how things get lost.
 
 ---
 
+## 1b. Team roles
+
+| Name | Role |
+|---|---|
+| frPyP | Project Director |
+| Preza | QA & Build Tooling |
+| devansh4281 | Lead Backend Developer |
+
+---
+
 ## 2. Repo state
 
 - Repo initialized: **Yes**
@@ -1093,6 +1103,11 @@ immediately, no other changes needed.
   11) — the exception is closed.** This was a one-off call for this
   situation, not a change to the standing rule — back to
   one-session-at-a-time starting with Session 6.
+- **Correction (added later, not editing the original Pass 10 text
+  above):** Pass 10 and the earlier version of §6 referred to
+  devansh4281 as "project director." That was inaccurate — **frPyP is
+  the actual project director** (see §1b). Flagging this here for
+  clarity rather than rewriting the historical log entry.
 
 ---
 
