@@ -908,6 +908,67 @@ Anything the next person picking this up needs to know:
 
 ---
 
+### Pass 13 — 2026-09-13 — frPyP — Session 6 (notifications) CLOSED: verified live, both API and UI, against the real Neon database
+Branch/commit: main (direct push)
+Did:
+- Pulled latest first — already up to date, no conflicts.
+- This session's sandbox hit the identical Neon/Prisma-engine network
+  block as every prior sandboxed pass (403 from the egress layer on
+  both `binaries.prisma.sh` and the Neon host, no raw TCP path on
+  port 5432 either) — confirmed again, not a new finding, just ruled
+  out doing the verification itself from here.
+- Verification was done by frPyP on a real machine (Fedora) instead,
+  guided command-by-command:
+  - Backend booted clean (`pnpm install`, `npx prisma generate`,
+    `pnpm dev`), `GET /api/v1/health` returned `db: "connected"`.
+  - Logged in as the seeded citizen, submitted a new WATER-category
+    challenge — came back `status: "ASSIGNED"` with
+    `assignedPartnerId` set (routed to partner3, per the seed data's
+    WATER/HEALTHCARE domain pairing), and a `CHALLENGE_ASSIGNED`
+    notification appeared immediately via `GET /api/v1/notifications`
+    with `read: false`.
+  - Logged in as partner3, `PATCH /challenges/:id/status` to
+    `IN_PROGRESS` — the citizen's notification list picked up a new
+    `STATUS_UPDATED` entry, also `read: false`.
+  - `PATCH /notifications/:id/read` on the `CHALLENGE_ASSIGNED` entry
+    flipped it to `read: true` and it stayed that way on re-fetch.
+  - Frontend: started `pnpm dev`, opened `/dashboard` as the citizen
+    in a real browser. Notifications list rendered correctly above
+    the challenges list, matching the API data exactly (screenshot
+    confirmed). First click-to-mark-read attempt looked like a no-op,
+    traced to a stale dev server from an earlier restart — after a
+    clean restart of both backend and frontend, a fresh
+    `STATUS_UPDATED` notification (triggered by moving the same
+    challenge to `COMPLETED`) was confirmed visually unread on load,
+    then visually changed to the read/greyed style on click, and
+    stayed that way after a page refresh.
+- All 14 items in this pass's scope (API: create/list/patch-team n/a
+  this pass since team wasn't touched, patch-status x2, notifications
+  list + mark-read; UI: dashboard render + click-to-read) came back
+  as expected. No bugs found.
+- Did **not** start Session 7 — stayed inside "verify Session 6,
+  nothing else" per Pass 12's own instructions and this file's
+  one-session-at-a-time rule.
+Files touched: none (verification-only pass, no code changed).
+Decisions made: none.
+Deviations from spec: none.
+Bugs found/fixed: none — the one hiccup (click appearing to do
+  nothing) was a stale dev server, not an application bug; resolved
+  by restarting both dev servers, not by changing any code.
+Left in a broken/incomplete state: nothing. Session 6 is fully closed.
+Anything the next person picking this up needs to know:
+- **Session 6 is done.** Session 7 (admin dashboard) is next — see §6.
+- Test data note: the live Neon database now has a `WATER` challenge
+  titled "Broken handpump in ward 4" sitting in `COMPLETED` status
+  (assigned to partner3), created during this verification pass. Not
+  a bug, just be aware it'll show up in any admin dashboard counts
+  built in Session 7.
+- Same non-blocking carryover as Pass 11/12: the `/partner` page
+  still hasn't been manually clicked through in a browser (its
+  endpoints are verified live, just not the UI itself).
+
+---
+
 ## 1. Current phase
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -925,14 +986,11 @@ live verification as a one-off, director-approved exception to the
 normal phase-order rule (Pass 10) — that exception is now closed out,
 both were verified together as required, and phase-order discipline is
 back to normal (one session at a time) going forward.
-**Session 6 (notifications) is written but not yet verified against
-the live database** — see Pass 12. This sandbox has no network path to
-Neon or to Prisma's engine-download host, same blocker every prior
-sandboxed pass hit, so the code is typechecked (frontend clean; backend
-errors are all the same known `@prisma/client` export gap, not new
-logic bugs) but not live-tested. **Do not start Session 7 (admin
-dashboard) until Session 6 is confirmed live** — see §6 for the exact
-verification steps.
+**Session 6 (notifications) is done and confirmed** live — both the
+API (create-triggers, list, mark-read) and the frontend UI (dashboard
+render, click-to-mark-read) — verified against the real Neon database
+on a real machine — see Pass 13. **Session 7 (admin dashboard) is next**
+— see §6.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -986,7 +1044,7 @@ people editing the same module in the same day is how things get lost.
   `PATCH /api/v1/challenges/:id/team`, `PATCH /api/v1/challenges/:id/status`
   (both PARTNER only, both new Pass 10, **verified live Pass 11**);
   `GET /api/v1/notifications`, `PATCH /api/v1/notifications/:id/read`
-  (both new Pass 12, **not yet verified live** — see Pass 12)
+  (both new Pass 12, **verified live Pass 13**)
 - Middleware implemented: `cors`, `express.json()`, `requireAuth`,
   `requireRole(...roles)` (Pass 6)
 - Modules scaffolded: `src/index.ts`, `src/prisma.ts`, `prisma/schema.prisma`,
@@ -1031,8 +1089,9 @@ people editing the same module in the same day is how things get lost.
   `getNotifications`/`markNotificationRead` added Pass 12
 - Citizen `/dashboard` page: **notifications list added Pass 12** —
   shown above the challenges list, unread indicator, click-to-mark-read,
-  no polling. Build/typecheck clean; not yet manually verified against a
-  live backend (see Pass 12).
+  no polling. **Verified live in a real browser against the live
+  backend — Pass 13** (render matched API data exactly; click-to-read
+  confirmed to update visually and persist across refresh).
 
 ### Auth
 - JWT issuing/verifying: **Written Pass 6, verified working against the
@@ -1086,24 +1145,25 @@ people editing the same module in the same day is how things get lost.
 ### Notifications
 - `GET /notifications` and `PATCH /notifications/:id/read`: **Written
   Pass 12** (`src/routes/notifications.ts`) — own-list read, ownership-
-  checked mark-as-read. Not yet verified live (see Pass 12).
+  checked mark-as-read. **Verified live — Pass 13.**
 - Trigger points: **Written Pass 12** (`src/lib/notify.ts`) —
   `CHALLENGE_ASSIGNED` fires from `POST /challenges` when auto-routing
   assigns a partner; `STATUS_UPDATED` fires from
   `PATCH /challenges/:id/status` on every valid transition. Both go to
-  the citizen who owns the challenge. Not yet verified live.
+  the citizen who owns the challenge. **Verified live — Pass 13**
+  (both trigger points confirmed to fire correctly).
 - Frontend: **Written Pass 12** — notifications list on the citizen
   `/dashboard` page (unread indicator, click-to-mark-read, no polling).
-  `tsc --noEmit` and `npm run build` both clean; not yet manually opened
-  in a browser against a live backend.
+  `tsc --noEmit` and `npm run build` both clean. **Verified live in a
+  real browser — Pass 13**: list renders correctly, click-to-read
+  updates visually and persists across refresh.
 
 ---
 
 ## 4. In progress right now
 
-Session 6 (notifications) is written but not yet verified live — see
-Pass 12 for the exact verification steps to run on a real machine.
-Sessions 1-5 remain closed (no changes to them this pass). Optional,
+Nothing in progress. Sessions 1-6 are all closed and confirmed live.
+Session 7 (admin dashboard) hasn't been started yet — see §6. Optional,
 non-blocking follow-up carried over from Pass 11: manually click
 through the `/partner` frontend page in a browser at some point.
 
@@ -1172,31 +1232,8 @@ through the `/partner` frontend page in a browser at some point.
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Session 6 (notifications) is written (Pass 12) but not yet verified
-against the live database.** This is the immediate next task — do not
-start Session 7 until it's confirmed.
-
-**Immediate: verify Session 6 live**, on a real machine with genuine
-internet access (this sandbox cannot reach Neon or Prisma's
-engine-download host — see §5):
-```
-git pull
-cd apps/backend
-pnpm install
-npx prisma generate
-pnpm dev
-```
-Then, logged in as the seeded citizen: submit a challenge and confirm
-`GET /api/v1/notifications` returns a `CHALLENGE_ASSIGNED` entry with
-`read: false`. Log in as the partner it routed to and move its status
-forward (`PATCH /:id/status`), then re-check the citizen's
-`GET /api/v1/notifications` for a new `STATUS_UPDATED` entry. Then
-`PATCH /api/v1/notifications/:id/read` on one and confirm it comes back
-`read: true` and stays that way on refetch. Also open `/dashboard` in a
-browser as the citizen and confirm the notifications list renders and
-clicking an unread one marks it read in the UI.
-
-**After that's confirmed: Session 7 — Admin dashboard**
+**Session 6 (notifications) is done and confirmed live (Pass 13) — both
+API and UI.** The immediate next task is **Session 7 — Admin dashboard**
 (per PROJECT_REFERENCE.md §5, Dashboard+Admin lane):
 - `GET /admin/dashboard` per §8: `{ totalChallenges, byDomain, byStatus,
   partnersEngaged, completedCount }`.
@@ -1313,9 +1350,9 @@ PATCH /api/v1/challenges/:id/status  body: { status } -> Challenge
                             check)
 
 GET   /api/v1/notifications          -> Notification[]  (own list; written
-                            Pass 12, not yet verified live)
+                            Pass 12, verified live Pass 13)
 PATCH /api/v1/notifications/:id/read -> Notification    (ownership-checked;
-                            written Pass 12, not yet verified live)
+                            written Pass 12, verified live Pass 13)
 ```
 Auth: written Pass 6, **verified working against the real database Pass 7**.
 Challenges POST/GET base behavior: written Pass 8, **verified working
@@ -1323,8 +1360,8 @@ against the real database Pass 8**. Categorization + auto-routing on POST,
 GET's PARTNER branch, and both PATCH endpoints: written Pass 9/10,
 **verified live against the real database — Pass 11**. Matches
 PROJECT_REFERENCE.md §8 exactly. Notifications endpoints: written Pass
-12, matches §8, **not yet verified live** — see Pass 12 for the
-verification steps.
+12, **verified live (API + UI) — Pass 13**. Matches PROJECT_REFERENCE.md
+§8 exactly.
 
 ---
 
