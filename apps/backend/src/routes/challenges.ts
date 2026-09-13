@@ -9,6 +9,7 @@ import {
 import { requireAuth, requireRole } from "../middleware/auth";
 import { categorize } from "../lib/categorize";
 import { routeToPartner } from "../lib/routing";
+import { notify } from "../lib/notify";
 
 // Session 5 helper: PARTNER role's `req.user.id` is the *user* id, but
 // challenges are linked via `assignedPartnerId` (the Partner row's id,
@@ -59,6 +60,20 @@ router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
       citizenId: req.user!.id,
     },
   });
+
+  // Session 6: CHALLENGE_ASSIGNED fires only when auto-routing actually
+  // assigned a partner (i.e. status came out ASSIGNED, not the
+  // near-impossible SUBMITTED fallback from routeToPartner returning
+  // null — see lib/routing.ts). Goes to the citizen, per PROJECT_STATUS.md
+  // §6 ("Citizen sees their own notifications").
+  if (challenge.assignedPartnerId) {
+    await notify(
+      req.user!.id,
+      "CHALLENGE_ASSIGNED",
+      "Challenge assigned",
+      `Your challenge "${challenge.title}" has been assigned to a partner.`
+    );
+  }
 
   res.status(201).json(challenge);
 });
@@ -155,6 +170,17 @@ router.patch("/:id/status", requireAuth, requireRole("PARTNER"), async (req, res
     where: { id: challenge.id },
     data: { status: parsed.data.status },
   });
+
+  // Session 6: STATUS_UPDATED fires on every valid transition, to the
+  // citizen who owns the challenge (not the partner making the change) —
+  // per PROJECT_STATUS.md §6.
+  await notify(
+    updated.citizenId,
+    "STATUS_UPDATED",
+    "Status updated",
+    `Your challenge "${updated.title}" is now ${updated.status}.`
+  );
+
   res.json(updated);
 });
 
