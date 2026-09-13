@@ -800,6 +800,114 @@ Anything the next person needs to know: Session 6 (notifications) is
 
 ---
 
+### Pass 12 (in progress, checkpoint push) — 2026-09-13 — frPyP — Session 6 (notifications) written, not yet verified against the live DB
+Branch/commit: main (direct push), commits `cd6ffe2` (backend) and
+  `3089747` (frontend)
+Did:
+- Pulled latest first (fast-forward, no conflicts), read full commit
+  history and this file before touching anything.
+- Checked PROJECT_REFERENCE.md against the Session 6 ask: the
+  `Notification` model was already in `prisma/schema.prisma` since
+  Session 1 (covers `userId`, `title`, `message`, `type`, `read`,
+  `createdAt` exactly per §6) — no schema change needed, no conflict to
+  flag.
+- `src/lib/notify.ts` (new): small helper wrapping
+  `prisma.notification.create`, used by both trigger points below.
+- `src/routes/notifications.ts` (new): `GET /notifications` (own list,
+  any authenticated role — scoped to `req.user!.id`, though only
+  citizens get anything today since only citizens are ever notified);
+  `PATCH /notifications/:id/read` (ownership-checked, same pattern as
+  Session 5's challenge PATCH routes).
+- `src/utils/errors.ts`: added `NOTIFICATION_NOT_FOUND` to the error
+  code union, for the same reason Session 5 added
+  `CHALLENGE_NOT_FOUND`/`INVALID_STATUS_TRANSITION` — §8 lists codes for
+  the resources it names explicitly, this extends that set for the new
+  resource rather than reusing `CHALLENGE_NOT_FOUND`.
+- `src/routes/challenges.ts`: `POST /challenges` now fires
+  `CHALLENGE_ASSIGNED` to the citizen when auto-routing actually assigns
+  a partner; `PATCH /:id/status` now fires `STATUS_UPDATED` to the
+  citizen on every valid transition (not the partner making the
+  change).
+- `src/index.ts`: mounted the new router at `/api/v1/notifications`.
+  Did not touch the existing health/auth/challenges mounts.
+- Frontend: `getNotifications`/`markNotificationRead` + `Notification`
+  type added to `lib/api.ts`. `DashboardPage.tsx` (citizen dashboard)
+  now shows a notifications list above the challenges list — unread
+  dot, click-to-mark-read, no polling — per §2's "no real-time
+  anything" and Session 6's "citizen sees their own notifications (e.g.
+  a bell/list on their dashboard)" wording. Did not touch
+  `PartnerDashboardPage.tsx` or any other already-working page.
+- Did **not** start Session 7 (admin dashboard) — stayed inside Session
+  6's scope per PROJECT_REFERENCE.md §5 and this file's own "one session
+  at a time" rule (back in effect since Pass 11 closed the Session
+  4/5 exception).
+- No new libraries — everything here uses already-approved dependencies
+  (Express, Prisma, Zod pattern reused from existing routes; TanStack
+  Query on the frontend, already installed).
+- Could not run `npx prisma generate` in this sandbox: same
+  `binaries.prisma.sh` 403 Forbidden block as every prior sandboxed pass
+  (Pass 4/6/8/9/10), confirmed again including with
+  `PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1` set. Also confirmed this
+  sandbox has no raw TCP path to Neon's Postgres port (same as Pass 4's
+  and Pass 9's finding).
+- `npx tsc --noEmit` on the backend: only the same pre-existing
+  `@prisma/client` type-export gaps as always (`Role`, `Category`,
+  `User`, and now `NotificationType`) — all trace back to `generate`
+  never completing here, not to a logic bug in this pass's code.
+- Frontend has no such dependency on the Prisma client: `npx tsc
+  --noEmit` came back clean, and `npm run build` (full production
+  build, `tsc -b && vite build`) succeeded with zero errors.
+Files touched: `apps/backend/src/lib/notify.ts` (new),
+  `apps/backend/src/routes/notifications.ts` (new),
+  `apps/backend/src/index.ts`, `apps/backend/src/utils/errors.ts`,
+  `apps/backend/src/routes/challenges.ts`, `apps/frontend/src/lib/api.ts`,
+  `apps/frontend/src/pages/DashboardPage.tsx`. Nothing already-marked-done
+  was rewritten.
+Decisions made:
+- `GET /notifications` isn't role-restricted (any authenticated user
+  gets their own list) since the query is already scoped to the
+  caller's `userId` — same "already ownership-safe, no need to
+  over-restrict" reasoning as elsewhere in this codebase. In practice
+  only citizens will ever see anything in it, since both trigger points
+  only ever notify the citizen who owns the challenge.
+- `NOTIFICATION_NOT_FOUND` error code addition (see above) — flagging
+  here too in case frPyP wants it named differently.
+Deviations from spec: none.
+Bugs found/fixed: none.
+Left in a broken/incomplete state:
+- **Not yet verified against the live server/database.** Same pattern
+  as Pass 6/8/9 — needs confirming on a machine with real network
+  access before this pass can be marked closed.
+Anything the next person picking this up needs to know:
+- Verify on a real machine:
+  ```
+  git pull
+  cd apps/backend
+  pnpm install
+  npx prisma generate
+  pnpm dev
+  ```
+  Then, logged in as the seeded citizen: submit a challenge (as in Pass
+  9/11's steps) and confirm `GET /api/v1/notifications` now returns a
+  `CHALLENGE_ASSIGNED` entry with `read: false`. Log in as the partner
+  it got routed to and move its status forward
+  (`PATCH /:id/status`), then re-check the citizen's
+  `GET /api/v1/notifications` for a new `STATUS_UPDATED` entry. Then
+  `PATCH /api/v1/notifications/:id/read` on one of them and confirm it
+  comes back with `read: true` and stays that way on a re-fetch. Also
+  open `/dashboard` in a browser as the citizen and confirm the
+  notifications list renders and clicking an unread one marks it read
+  in the UI.
+- Once that's confirmed, update this entry (or add a short closing
+  note) and this pass can be considered closed. Session 7 (admin
+  dashboard) is next — see §6 — do not start it before Session 6 is
+  confirmed working live.
+- Same optional, non-blocking item carried over from Pass 11: the
+  `/partner` page still hasn't been manually clicked through in a
+  browser.
+
+---
+
 ## 1. Current phase
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -816,8 +924,15 @@ now verified). Session 5 was originally written ahead of Session 4's
 live verification as a one-off, director-approved exception to the
 normal phase-order rule (Pass 10) — that exception is now closed out,
 both were verified together as required, and phase-order discipline is
-back to normal (one session at a time) going forward. **Session 6
-(notifications) is next** — see §6.
+back to normal (one session at a time) going forward.
+**Session 6 (notifications) is written but not yet verified against
+the live database** — see Pass 12. This sandbox has no network path to
+Neon or to Prisma's engine-download host, same blocker every prior
+sandboxed pass hit, so the code is typechecked (frontend clean; backend
+errors are all the same known `@prisma/client` export gap, not new
+logic bugs) but not live-tested. **Do not start Session 7 (admin
+dashboard) until Session 6 is confirmed live** — see §6 for the exact
+verification steps.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -869,14 +984,17 @@ people editing the same module in the same day is how things get lost.
   written Pass 8, **verified working against the real Neon database
   Pass 8**; PARTNER branch added Pass 10, **verified live Pass 11**),
   `PATCH /api/v1/challenges/:id/team`, `PATCH /api/v1/challenges/:id/status`
-  (both PARTNER only, both new Pass 10, **verified live Pass 11**)
+  (both PARTNER only, both new Pass 10, **verified live Pass 11**);
+  `GET /api/v1/notifications`, `PATCH /api/v1/notifications/:id/read`
+  (both new Pass 12, **not yet verified live** — see Pass 12)
 - Middleware implemented: `cors`, `express.json()`, `requireAuth`,
   `requireRole(...roles)` (Pass 6)
 - Modules scaffolded: `src/index.ts`, `src/prisma.ts`, `prisma/schema.prisma`,
   `prisma/seed.ts`, `src/routes/auth.ts`, `src/routes/challenges.ts`,
   `src/middleware/auth.ts`, `src/utils/jwt.ts`, `src/utils/errors.ts`,
   `src/validation/auth.ts`, `src/validation/challenges.ts`,
-  `src/lib/categorize.ts`, `src/lib/routing.ts` (both Pass 9)
+  `src/lib/categorize.ts`, `src/lib/routing.ts` (both Pass 9),
+  `src/routes/notifications.ts`, `src/lib/notify.ts` (both Pass 12)
 
 ### Database
 - Prisma schema written: **Yes** (`apps/backend/prisma/schema.prisma`)
@@ -909,7 +1027,12 @@ people editing the same module in the same day is how things get lost.
   token/user, used by `useQuery`/`useMutation` in the dashboard and
   submission form) — Pass 8; partner-dashboard helpers
   (`getAssignedChallenges`/`updateChallengeTeam`/`updateChallengeStatus`)
-  and role-aware post-login redirect added Pass 10
+  and role-aware post-login redirect added Pass 10;
+  `getNotifications`/`markNotificationRead` added Pass 12
+- Citizen `/dashboard` page: **notifications list added Pass 12** —
+  shown above the challenges list, unread indicator, click-to-mark-read,
+  no polling. Build/typecheck clean; not yet manually verified against a
+  live backend (see Pass 12).
 
 ### Auth
 - JWT issuing/verifying: **Written Pass 6, verified working against the
@@ -961,19 +1084,28 @@ people editing the same module in the same day is how things get lost.
   itself hasn't been manually opened/clicked through in a browser yet.
 
 ### Notifications
-- Implemented: **No** (session 6)
+- `GET /notifications` and `PATCH /notifications/:id/read`: **Written
+  Pass 12** (`src/routes/notifications.ts`) — own-list read, ownership-
+  checked mark-as-read. Not yet verified live (see Pass 12).
+- Trigger points: **Written Pass 12** (`src/lib/notify.ts`) —
+  `CHALLENGE_ASSIGNED` fires from `POST /challenges` when auto-routing
+  assigns a partner; `STATUS_UPDATED` fires from
+  `PATCH /challenges/:id/status` on every valid transition. Both go to
+  the citizen who owns the challenge. Not yet verified live.
+- Frontend: **Written Pass 12** — notifications list on the citizen
+  `/dashboard` page (unread indicator, click-to-mark-read, no polling).
+  `tsc --noEmit` and `npm run build` both clean; not yet manually opened
+  in a browser against a live backend.
 
 ---
 
 ## 4. In progress right now
 
-Nothing in progress right now. Session 4 (categorization + auto-routing)
-and Session 5 (partner dashboard) are both closed — verified live
-against the real database, Pass 11. Session 6 (notifications) hasn't
-been started yet — see §6 for its spec. Optional, non-blocking
-follow-up: manually click through the `/partner` frontend page in a
-browser at some point (only its backend endpoints have been tested so
-far, see §3).
+Session 6 (notifications) is written but not yet verified live — see
+Pass 12 for the exact verification steps to run on a real machine.
+Sessions 1-5 remain closed (no changes to them this pass). Optional,
+non-blocking follow-up carried over from Pass 11: manually click
+through the `/partner` frontend page in a browser at some point.
 
 ---
 
@@ -1030,26 +1162,52 @@ far, see §3).
   looks up by phone number literally and returns `UNAUTHORIZED` rather
   than a clearer validation error. Worth remembering when testing by
   hand; not something to "fix" since the contract itself is correct.
+- **Reconfirmed once more, different sandbox (Pass 12):** same
+  `binaries.prisma.sh` 403 Forbidden and no-TCP-path-to-Neon symptoms as
+  every prior sandboxed pass. Not a new bug — just re-confirms Pass 11's
+  conclusion that this is environment-only and the fix is doing DB-
+  touching verification on a real machine, not this sandbox.
 
 ---
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Session 4 and Session 5's combined live-verification checklist is
-done** (Pass 11, all 8 steps passed against the real database — see §0).
+**Session 6 (notifications) is written (Pass 12) but not yet verified
+against the live database.** This is the immediate next task — do not
+start Session 7 until it's confirmed.
 
-**Immediate: Session 6 — Notifications**
-(per PROJECT_REFERENCE.md §5, Partner+Routing lane):
-- Two events only: `CHALLENGE_ASSIGNED` (fired when auto-routing assigns a
-  partner in `POST /challenges`) and `STATUS_UPDATED` (fired on
-  `PATCH /challenges/:id/status`).
-- `GET /notifications` and `PATCH /notifications/:id/read` per §8.
-- Citizen sees their own notifications (e.g. a bell/list on their
-  dashboard). Do **not** build the admin dashboard yet (Session 7).
-- Stick to just these two events and these two endpoints for this
-  session — no polling/real-time layer (see §7, already decided against
-  project-wide), no notification preferences/settings, nothing beyond
-  what's listed above.
+**Immediate: verify Session 6 live**, on a real machine with genuine
+internet access (this sandbox cannot reach Neon or Prisma's
+engine-download host — see §5):
+```
+git pull
+cd apps/backend
+pnpm install
+npx prisma generate
+pnpm dev
+```
+Then, logged in as the seeded citizen: submit a challenge and confirm
+`GET /api/v1/notifications` returns a `CHALLENGE_ASSIGNED` entry with
+`read: false`. Log in as the partner it routed to and move its status
+forward (`PATCH /:id/status`), then re-check the citizen's
+`GET /api/v1/notifications` for a new `STATUS_UPDATED` entry. Then
+`PATCH /api/v1/notifications/:id/read` on one and confirm it comes back
+`read: true` and stays that way on refetch. Also open `/dashboard` in a
+browser as the citizen and confirm the notifications list renders and
+clicking an unread one marks it read in the UI.
+
+**After that's confirmed: Session 7 — Admin dashboard**
+(per PROJECT_REFERENCE.md §5, Dashboard+Admin lane):
+- `GET /admin/dashboard` per §8: `{ totalChallenges, byDomain, byStatus,
+  partnersEngaged, completedCount }`.
+- Read-only for MVP — no workflow actions required (§2).
+- ADMIN role needs adding to `GET /challenges`'s "all" branch per §8
+  (currently only CITIZEN/PARTNER branches exist — see §9) if the
+  dashboard route reuses that data, or a dedicated admin route/query —
+  whichever is simpler is a judgment call for whoever picks this up,
+  just don't touch the existing CITIZEN/PARTNER branches while doing it.
+- Stick to just this — no manual reassignment or other Priority-B items
+  (§2) alongside it.
 
 Optional, non-blocking, whenever convenient: manually open the
 `/partner` page in a browser and click through it once (see §3/§4) —
@@ -1059,7 +1217,7 @@ yet.
 One environment note carried over: if testing from a phone via
 Termux+proot, expect Prisma's query engine to fail to connect even when
 the database is fine (Session 1, Pass 5). Sandboxed dev environments used
-for every pass since (Pass 6, 8, 9, 10) had a different but equally
+for every pass since (Pass 6, 8, 9, 10, 12) had a different but equally
 blocking issue: no network access to Neon's Postgres port or to Prisma's
 engine-download host at all. **Pass 11 confirmed the fix is simply to do
 DB-touching work on a real machine with real internet access** — worked
@@ -1153,13 +1311,20 @@ PATCH /api/v1/challenges/:id/status  body: { status } -> Challenge
                             409 INVALID_STATUS_TRANSITION otherwise — Pass 10,
                             verified live Pass 11, including the ownership
                             check)
+
+GET   /api/v1/notifications          -> Notification[]  (own list; written
+                            Pass 12, not yet verified live)
+PATCH /api/v1/notifications/:id/read -> Notification    (ownership-checked;
+                            written Pass 12, not yet verified live)
 ```
 Auth: written Pass 6, **verified working against the real database Pass 7**.
 Challenges POST/GET base behavior: written Pass 8, **verified working
 against the real database Pass 8**. Categorization + auto-routing on POST,
 GET's PARTNER branch, and both PATCH endpoints: written Pass 9/10,
 **verified live against the real database — Pass 11**. Matches
-PROJECT_REFERENCE.md §8 exactly.
+PROJECT_REFERENCE.md §8 exactly. Notifications endpoints: written Pass
+12, matches §8, **not yet verified live** — see Pass 12 for the
+verification steps.
 
 ---
 
