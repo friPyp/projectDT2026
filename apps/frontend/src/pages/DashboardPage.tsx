@@ -1,8 +1,60 @@
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { getMyChallenges } from "../lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getMyChallenges, getNotifications, markNotificationRead, type Notification } from "../lib/api";
 import { CATEGORY_LABELS, STATUS_LABELS, STATUS_STYLES } from "../lib/challengeLabels";
 import AppLayout from "../components/AppLayout";
+
+// Session 6: citizen-facing notification list — plain fetch-on-load, no
+// polling (per PROJECT_REFERENCE.md §2/§7, nothing here needs real-time).
+// Clicking an unread one marks it read via PATCH /notifications/:id/read.
+function NotificationsList() {
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: getNotifications,
+  });
+
+  const readMutation = useMutation({
+    mutationFn: (id: string) => markNotificationRead(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  if (isLoading || isError || !data || data.length === 0) {
+    // Session 6 spec doesn't call for an empty/error state here beyond
+    // just not showing the section — the challenges list below still
+    // carries the page on a first visit with nothing to notify about yet.
+    return null;
+  }
+
+  const unreadCount = data.filter((n: Notification) => !n.read).length;
+
+  return (
+    <div className="mb-6 bg-white rounded-xl border border-slate-200">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+        <h2 className="text-sm font-semibold text-slate-900">
+          Notifications{unreadCount > 0 ? ` (${unreadCount} new)` : ""}
+        </h2>
+      </div>
+      <ul className="divide-y divide-slate-100">
+        {data.map((n: Notification) => (
+          <li
+            key={n.id}
+            onClick={() => !n.read && readMutation.mutate(n.id)}
+            className={`px-4 py-3 text-sm ${n.read ? "text-slate-500" : "text-slate-900 bg-slate-50 cursor-pointer"}`}
+          >
+            <div className="flex items-start gap-2">
+              {!n.read && <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />}
+              <div>
+                <p className="font-medium">{n.title}</p>
+                <p className="text-slate-500">{n.message}</p>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { data, isLoading, isError, error } = useQuery({
@@ -25,6 +77,8 @@ export default function DashboardPage() {
             + New challenge
           </Link>
         </div>
+
+        <NotificationsList />
 
         {isLoading && <p className="text-sm text-slate-500">Loading...</p>}
 

@@ -165,3 +165,25 @@ export function updateChallengeStatus(id: string, status: "IN_PROGRESS" | "COMPL
     body: JSON.stringify({ status }),
   });
 }
+
+// ---- Notifications (Session 6) ----
+
+export type NotificationType = "CHALLENGE_ASSIGNED" | "STATUS_UPDATED";
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  read: boolean;
+  createdAt: string;
+}
+
+export function getNotifications() {
+  return apiFetch<Notification[]>("/notifications");
+}
+
+export function markNotificationRead(id: string) {
+  return apiFetch<Notification>(`/notifications/${id}/read`, { method: "PATCH" });
+}
