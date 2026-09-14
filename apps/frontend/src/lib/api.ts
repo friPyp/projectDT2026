@@ -187,3 +187,17 @@ export function getNotifications() {
 export function markNotificationRead(id: string) {
   return apiFetch<Notification>(`/notifications/${id}/read`, { method: "PATCH" });
 }
+
+// ---- Admin dashboard (Session 7) ----
+
+export interface AdminDashboard {
+  totalChallenges: number;
+  byDomain: Partial<Record<Category, number>>;
+  byStatus: Partial<Record<ChallengeStatus, number>>;
+  partnersEngaged: number;
+  completedCount: number;
+}
+
+export function getAdminDashboard() {
+  return apiFetch<AdminDashboard>("/admin/dashboard");
+}
