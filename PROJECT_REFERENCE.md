@@ -10,6 +10,14 @@
 > code, don't silently change them — say so in the group chat first, then
 > update this file.
 
+> **This is not an SIH competition submission.** SIH26043 is referenced
+> below only as the origin problem statement used to scope this project —
+> it's where the domain (citizens/partners/challenges) and the pruned
+> feature list in §2 came from. §2, not §1's official component list, is
+> the actual build target. Added 2026-09-14 to make explicit what §1/§2's
+> "for reference" / "what we're actually building" split already implied
+> but didn't say outright — see §9.
+
 ---
 
 ## 1. What this actually is
@@ -225,3 +233,8 @@ assign to a default/general partner if no domain match found)
   reflected here until now (flagged as outstanding in PROJECT_STATUS.md §7
   since Pass 1). No behavior changed — this just corrects the doc to match
   the schema that's already been running in prod.
+- 2026-09-14 — frPyP — added a top-of-file note making explicit that this
+  isn't an SIH competition submission; SIH26043 is background/scoping
+  reference only, and §2 (not §1's official component list) is the real
+  build target. No scope, schema, or contract changed — this only makes
+  explicit a distinction the file's own §1/§2 wording already implied.
