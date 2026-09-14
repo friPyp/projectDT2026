@@ -5,8 +5,12 @@ import { useAuth } from "../lib/auth";
 import { ApiError } from "../lib/api";
 import type { User } from "../lib/api";
 
+// Mirrors HomeRedirect's role logic in App.tsx — kept in sync manually
+// since this is a separate post-login redirect, not the same component.
 function dashboardPathFor(user: User): string {
-  return user.role === "PARTNER" ? "/partner" : "/dashboard";
+  if (user.role === "PARTNER") return "/partner";
+  if (user.role === "ADMIN") return "/admin";
+  return "/dashboard";
 }
 
 interface LoginFormValues {
