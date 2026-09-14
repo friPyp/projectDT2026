@@ -5,6 +5,7 @@ import { prisma } from "./prisma";
 import authRouter from "./routes/auth";
 import challengesRouter from "./routes/challenges";
 import notificationsRouter from "./routes/notifications";
+import adminRouter from "./routes/admin";
 
 const app = express();
 app.use(cors());
@@ -19,9 +20,11 @@ app.use("/api/v1/auth", authRouter);
 // (Session 6, see routes/notifications.ts + lib/notify.ts).
 app.use("/api/v1/challenges", challengesRouter);
 
-// GET / (own notifications) + PATCH /:id/read — Session 6. Admin route is
-// still Session 7 — do not add it here yet.
+// GET / (own notifications) + PATCH /:id/read — Session 6.
 app.use("/api/v1/notifications", notificationsRouter);
+
+// GET /dashboard — ADMIN only, read-only counts — Session 7.
+app.use("/api/v1/admin", adminRouter);
 
 app.get("/api/v1/health", async (_req, res) => {
   try {
