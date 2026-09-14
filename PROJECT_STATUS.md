@@ -969,6 +969,81 @@ Anything the next person picking this up needs to know:
 
 ---
 
+### Pass 14 — 2026-09-14 — frPyP — Session 7 (admin dashboard) written, not yet verified live
+Branch/commit: main (two direct pushes: backend, then frontend — see below)
+Did:
+- Pulled latest first — already up to date, no conflicts. Pulled again
+  right before committing — still up to date.
+- Backend: added `GET /api/v1/admin/dashboard` (`src/routes/admin.ts`,
+  mounted in `src/index.ts`) — `requireAuth` + `requireRole("ADMIN")`,
+  returns `{ totalChallenges, byDomain, byStatus, partnersEngaged,
+  completedCount }` exactly per §8. Implemented as a dedicated query
+  (`prisma.challenge.count()` / `.groupBy()` on `category` and `status`,
+  plus a distinct count of `assignedPartnerId` for partners engaged) —
+  did **not** touch `GET /challenges`'s existing CITIZEN/PARTNER branches
+  in `routes/challenges.ts`, which stayed untouched per this project's
+  don't-rewrite-working-code rule.
+- Frontend: added `AdminDashboardPage.tsx` (stat cards for total/
+  partners-engaged/completed, a by-status breakdown, a by-domain
+  breakdown), `getAdminDashboard()` in `lib/api.ts`, `/admin` route in
+  `App.tsx` (guarded by the existing `ProtectedRoute` component's `role`
+  prop — no changes needed to that component), and an ADMIN case in
+  `HomeRedirect`.
+- This sandbox hit the identical Neon/Prisma-engine network block as
+  every prior sandboxed pass (403 from the egress layer on
+  `binaries.prisma.sh`, and this time also explicitly confirmed a raw
+  TCP connection attempt to the Neon host on port 5432 times out) — same
+  underlying constraint as Pass 4/6/8/9/10/12, not a new issue.
+- What **was** verified from this sandbox: `apps/backend` — `tsc
+  --noEmit` produces only the pre-existing, documented Prisma-generate-
+  blocked errors (missing `Category`/`Role`/etc. exports from
+  `@prisma/client`) in files untouched by this pass; the new
+  `routes/admin.ts` itself introduces no new type errors. `apps/frontend`
+  — `tsc --noEmit` clean, `vite build` succeeds.
+- What was **not** verified from this sandbox (same limitation as every
+  prior pass): the route was never actually run against the live Neon
+  database, so the real query results (counts, grouping shape) have not
+  been confirmed end-to-end, and the frontend page has never been opened
+  in a browser against a running backend.
+Files touched: `apps/backend/src/routes/admin.ts` (new),
+  `apps/backend/src/index.ts`, `apps/frontend/src/pages/
+  AdminDashboardPage.tsx` (new), `apps/frontend/src/App.tsx`,
+  `apps/frontend/src/lib/api.ts`.
+Decisions made:
+- Chose a **dedicated `GET /admin/dashboard` route/query** over adding an
+  ADMIN branch to `GET /challenges`'s existing role-aware handler — §6's
+  next-task note left this as an open judgment call for whoever picked it
+  up. Reasoning: simpler for a read-only aggregate, and keeps
+  `routes/challenges.ts` (already working, already verified live)
+  completely untouched.
+Deviations from spec: none — no new libraries, no scope beyond the
+  §8 shape for `/admin/dashboard`, no Priority-B items touched.
+Bugs found/fixed: n/a — no live testing was possible from this sandbox.
+Left in a broken/incomplete state:
+- **Session 7 needs live verification on a real machine**, same pattern
+  as every DB-touching session before it (Session 1 Pass 5, Sessions
+  2/3 Pass 7/8, Sessions 4/5 Pass 11, Session 6 Pass 13):
+  ```
+  cd apps/backend && npx prisma generate && pnpm dev
+  # log in as admin@demo.local / Demo@1234, then:
+  curl -H "Authorization: Bearer <admin token>" http://localhost:4000/api/v1/admin/dashboard
+  ```
+  Expect the JSON shape from §8, with counts reflecting whatever's
+  currently in the real database — including the `COMPLETED` `WATER`
+  challenge created during Pass 13's verification (see that pass's
+  notes), so `completedCount` should be at least 1 and `byStatus`
+  should include a non-zero `COMPLETED`.
+  Then open `/admin` in a browser (log in as the admin demo account) and
+  confirm the page renders those same numbers and doesn't error.
+Anything the next person picking this up needs to know:
+- **Do not start Session 8 (polish) until Session 7 is confirmed live**
+  — this file's phase-order rule applies here same as every prior
+  session boundary.
+- Only frPyP's name appears in this log per standing instruction — no
+  other names added.
+
+---
+
 ## 1. Current phase
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -989,8 +1064,13 @@ back to normal (one session at a time) going forward.
 **Session 6 (notifications) is done and confirmed** live — both the
 API (create-triggers, list, mark-read) and the frontend UI (dashboard
 render, click-to-mark-read) — verified against the real Neon database
-on a real machine — see Pass 13. **Session 7 (admin dashboard) is next**
-— see §6.
+on a real machine — see Pass 13. **Session 7 (admin dashboard) is
+written (Pass 14) but not yet verified live** — `GET /admin/dashboard`
+plus the `/admin` frontend page exist and typecheck/build cleanly, but
+have not been run against the real Neon database or opened in a
+browser yet (this sandbox can't reach either Neon or Prisma's engine
+host — same limitation as every prior DB-touching pass). **That live
+verification is the next task** — see §6.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -1158,14 +1238,26 @@ people editing the same module in the same day is how things get lost.
   real browser — Pass 13**: list renders correctly, click-to-read
   updates visually and persists across refresh.
 
+### Admin dashboard
+- `GET /admin/dashboard`: **Written Pass 14** (`src/routes/admin.ts`) —
+  ADMIN only, dedicated query (not reusing `GET /challenges`), returns
+  `{ totalChallenges, byDomain, byStatus, partnersEngaged,
+  completedCount }` per §8. **Not yet verified live** — see §6.
+- Frontend `/admin` page: **Written Pass 14** — stat cards + by-status
+  and by-domain breakdowns, read-only, no workflow actions. `tsc
+  --noEmit` and `vite build` both clean. **Not yet opened in a browser
+  against a running backend.**
+
 ---
 
 ## 4. In progress right now
 
-Nothing in progress. Sessions 1-6 are all closed and confirmed live.
-Session 7 (admin dashboard) hasn't been started yet — see §6. Optional,
-non-blocking follow-up carried over from Pass 11: manually click
-through the `/partner` frontend page in a browser at some point.
+Session 7 (admin dashboard) is written (Pass 14) but needs live
+verification against the real Neon database and a browser check of
+`/admin` — see §6. Nothing else in progress. Sessions 1-6 are all
+closed and confirmed live. Optional, non-blocking follow-up carried
+over from Pass 11: manually click through the `/partner` frontend page
+in a browser at some point.
 
 ---
 
@@ -1227,24 +1319,45 @@ through the `/partner` frontend page in a browser at some point.
   every prior sandboxed pass. Not a new bug — just re-confirms Pass 11's
   conclusion that this is environment-only and the fix is doing DB-
   touching verification on a real machine, not this sandbox.
+- **Reconfirmed again, Pass 14 (Session 7 build):** same
+  `binaries.prisma.sh` 403 as every prior pass; this time also directly
+  confirmed (via a raw TCP connection attempt) that the Neon host times
+  out on port 5432 from this sandbox specifically, not just inferred
+  from Prisma's error. Not a new bug, no new symptom — just another
+  environment (this is a fresh sandbox each pass) hitting the same
+  documented wall. Code written this pass was typechecked/built as far
+  as this limitation allows; live DB verification still needs a real
+  machine, same as every session before it.
 
 ---
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Session 6 (notifications) is done and confirmed live (Pass 13) — both
-API and UI.** The immediate next task is **Session 7 — Admin dashboard**
-(per PROJECT_REFERENCE.md §5, Dashboard+Admin lane):
-- `GET /admin/dashboard` per §8: `{ totalChallenges, byDomain, byStatus,
-  partnersEngaged, completedCount }`.
-- Read-only for MVP — no workflow actions required (§2).
-- ADMIN role needs adding to `GET /challenges`'s "all" branch per §8
-  (currently only CITIZEN/PARTNER branches exist — see §9) if the
-  dashboard route reuses that data, or a dedicated admin route/query —
-  whichever is simpler is a judgment call for whoever picks this up,
-  just don't touch the existing CITIZEN/PARTNER branches while doing it.
+**Session 7 (admin dashboard) is written (Pass 14) but not yet verified
+live.** The immediate next task is finishing that verification, on a
+real machine with real internet access (same pattern as every
+DB-touching session before it):
+- `cd apps/backend && npx prisma generate && pnpm dev` (in one
+  terminal), then confirm `GET /api/v1/health` still returns
+  `db: "connected"`.
+- Log in as `admin@demo.local` / `Demo@1234`, call
+  `GET /api/v1/admin/dashboard` with that token, and confirm the JSON
+  shape matches §8 and the counts look right against what's actually in
+  the database (there's a `COMPLETED` `WATER` challenge from Pass 13's
+  verification that should show up — see Pass 14's log entry for
+  specifics).
+- Start the frontend (`pnpm dev` in `apps/frontend`), open `/admin` in
+  a browser logged in as the admin demo account, and confirm the page
+  renders those same numbers without erroring.
+- Once that's confirmed, update this file to close out Session 7 (mark
+  it done/verified in §1, §3, §5's next-task note) and move on to
+  **Session 8 — Polish** (per PROJECT_REFERENCE.md §5): mobile
+  responsiveness, loading/empty/error states, accessibility, and a full
+  run of the manual test checklist in PROJECT_REFERENCE.md §7. Do not
+  start Session 8 before Session 7 is confirmed live — same phase-order
+  rule as every prior session boundary.
 - Stick to just this — no manual reassignment or other Priority-B items
-  (§2) alongside it.
+  (PROJECT_REFERENCE.md §2) alongside it.
 
 Optional, non-blocking, whenever convenient: manually open the
 `/partner` page in a browser and click through it once (see §3/§4) —
@@ -1254,11 +1367,11 @@ yet.
 One environment note carried over: if testing from a phone via
 Termux+proot, expect Prisma's query engine to fail to connect even when
 the database is fine (Session 1, Pass 5). Sandboxed dev environments used
-for every pass since (Pass 6, 8, 9, 10, 12) had a different but equally
-blocking issue: no network access to Neon's Postgres port or to Prisma's
-engine-download host at all. **Pass 11 confirmed the fix is simply to do
-DB-touching work on a real machine with real internet access** — worked
-immediately, no other changes needed.
+for every pass since (Pass 6, 8, 9, 10, 12, 14) had a different but
+equally blocking issue: no network access to Neon's Postgres port or to
+Prisma's engine-download host at all. **Pass 11 confirmed the fix is
+simply to do DB-touching work on a real machine with real internet
+access** — worked immediately, no other changes needed.
 
 ---
 
@@ -1337,8 +1450,9 @@ POST /api/v1/challenges   body: { title, description, category, district } -> Ch
                             verified live Pass 11)
 GET  /api/v1/challenges   -> Challenge[]  (CITIZEN: own challenges — Pass 8,
                             verified live. PARTNER: assigned challenges only
-                            — Pass 10, verified live Pass 11. ADMIN "all" is
-                            still Session 7, not built yet.)
+                            — Pass 10, verified live Pass 11. ADMIN "all" was
+                            deliberately not added here — Session 7 built a
+                            dedicated admin route/query instead, see below.)
 PATCH /api/v1/challenges/:id/team    body: { team } -> Challenge
                             (PARTNER only, ownership-checked — Pass 10,
                             verified live Pass 11)
@@ -1353,6 +1467,11 @@ GET   /api/v1/notifications          -> Notification[]  (own list; written
                             Pass 12, verified live Pass 13)
 PATCH /api/v1/notifications/:id/read -> Notification    (ownership-checked;
                             written Pass 12, verified live Pass 13)
+
+GET   /api/v1/admin/dashboard -> { totalChallenges, byDomain, byStatus,
+                            partnersEngaged, completedCount }
+                            (ADMIN only, dedicated query — written Pass 14,
+                            NOT YET verified live — see §6)
 ```
 Auth: written Pass 6, **verified working against the real database Pass 7**.
 Challenges POST/GET base behavior: written Pass 8, **verified working
@@ -1361,7 +1480,9 @@ GET's PARTNER branch, and both PATCH endpoints: written Pass 9/10,
 **verified live against the real database — Pass 11**. Matches
 PROJECT_REFERENCE.md §8 exactly. Notifications endpoints: written Pass
 12, **verified live (API + UI) — Pass 13**. Matches PROJECT_REFERENCE.md
-§8 exactly.
+§8 exactly. Admin dashboard endpoint: written Pass 14, **not yet
+verified live** — matches the §8 shape as written, but hasn't been run
+against the real database yet (see §6 for the exact verification steps).
 
 ---
 
