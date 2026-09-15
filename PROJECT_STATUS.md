@@ -1042,6 +1042,52 @@ Anything the next person picking this up needs to know:
 - Only frPyP's name appears in this log per standing instruction — no
   other names added.
 
+### Pass 15 — 2026-09-15 — frPyP — Session 7 verified live; found and fixed one bug in the process; Session 7 now fully closed
+Branch/commit: main (direct pushes: `3af0c64` bug fix, this status rewrite next)
+Did:
+- Ran Session 7's live verification on a real machine (frPyP's), per the
+  exact steps left in Pass 14: `prisma generate`, started the backend,
+  logged in as `admin@demo.local`, called `GET /admin/dashboard` with the
+  token. Response matched the §8 shape exactly: `{ totalChallenges: 6,
+  byDomain: { PUBLIC_ADMIN: 2, WATER: 3, EDUCATION: 1 }, byStatus: {
+  COMPLETED: 2, ASSIGNED: 2, SUBMITTED: 2 }, partnersEngaged: 2,
+  completedCount: 2 }`. Numbers are internally consistent (byDomain and
+  byStatus both sum to 6; completedCount matches byStatus.COMPLETED).
+- Opened `/admin` in a browser (real machine, real backend) — page
+  rendered the same six numbers with no console errors. Session 7's
+  frontend is now confirmed live, not just typechecked/built.
+- **Found a real bug during this check**: after logging in as admin, the
+  app didn't redirect anywhere — stayed on `/login`. Traced it to
+  `apps/frontend/src/pages/LoginPage.tsx`'s `dashboardPathFor()` helper,
+  which only ever returns `/partner` or `/dashboard` — it was written in
+  Session 3, before the ADMIN role's own route existed, and Session 7
+  (Pass 14) updated the *separate* `HomeRedirect` role logic in
+  `App.tsx` but missed this parallel helper. Net effect: admin login
+  succeeded, but the app tried to send the admin to `/dashboard`
+  (CITIZEN-only), got bounced by `ProtectedRoute`, and landed back on
+  `/login` — looked like login was doing nothing.
+- **Fixed**: `dashboardPathFor()` now also returns `/admin` for the
+  ADMIN role, mirroring `HomeRedirect`. No other role's redirect
+  behavior touched. Re-tested live on the real machine after the fix:
+  admin login now lands on `/admin` correctly. Citizen and partner login
+  redirects were not affected (not retested individually since the
+  change is an added branch, not a modified one, but worth a quick
+  sanity check next time either of those logs in).
+Files touched: `apps/frontend/src/pages/LoginPage.tsx` only.
+Decisions made: none requiring a call — this was a straightforward bug
+  fix completing a case Session 7 should already have covered, not a
+  design choice or scope change.
+Deviations from spec: none — no new libraries, no scope beyond fixing
+  the one redirect gap.
+Bugs found/fixed:
+- Fixed: admin post-login redirect (`dashboardPathFor` missing the
+  ADMIN case) — see above. Verified fixed live.
+Left in a broken/incomplete state: nothing from Session 7. Sessions 1-7
+  are all now closed and confirmed live.
+Anything the next person picking this up needs to know:
+- **Session 7 is fully done.** Session 8 (polish) is next — see §6.
+- Only frPyP's name appears in this log per standing instruction.
+
 ---
 
 ## 1. Current phase
@@ -1064,13 +1110,12 @@ back to normal (one session at a time) going forward.
 **Session 6 (notifications) is done and confirmed** live — both the
 API (create-triggers, list, mark-read) and the frontend UI (dashboard
 render, click-to-mark-read) — verified against the real Neon database
-on a real machine — see Pass 13. **Session 7 (admin dashboard) is
-written (Pass 14) but not yet verified live** — `GET /admin/dashboard`
-plus the `/admin` frontend page exist and typecheck/build cleanly, but
-have not been run against the real Neon database or opened in a
-browser yet (this sandbox can't reach either Neon or Prisma's engine
-host — same limitation as every prior DB-touching pass). **That live
-verification is the next task** — see §6.
+on a real machine — see Pass 13. **Session 7 (admin dashboard) is done
+and confirmed live** — `GET /admin/dashboard` and the `/admin` frontend
+page were both verified against the real Neon database on a real
+machine (Pass 15), including a bug found and fixed during that check
+(admin post-login redirect was going to `/dashboard` instead of
+`/admin` — see §5). **Session 8 (polish) is the next task** — see §6.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -1242,22 +1287,28 @@ people editing the same module in the same day is how things get lost.
 - `GET /admin/dashboard`: **Written Pass 14** (`src/routes/admin.ts`) —
   ADMIN only, dedicated query (not reusing `GET /challenges`), returns
   `{ totalChallenges, byDomain, byStatus, partnersEngaged,
-  completedCount }` per §8. **Not yet verified live** — see §6.
+  completedCount }` per §8. **Verified live against the real Neon
+  database — Pass 15** (counts internally consistent: 6 total
+  challenges, byDomain and byStatus both summing to 6, completedCount
+  matching byStatus.COMPLETED).
 - Frontend `/admin` page: **Written Pass 14** — stat cards + by-status
-  and by-domain breakdowns, read-only, no workflow actions. `tsc
-  --noEmit` and `vite build` both clean. **Not yet opened in a browser
-  against a running backend.**
+  and by-domain breakdowns, read-only, no workflow actions. **Verified
+  live in a real browser against the live backend — Pass 15** — page
+  rendered the same numbers as the API, no console errors.
+- Admin post-login redirect: was broken (sent admins to `/dashboard`
+  instead of `/admin`, bouncing them back to `/login`) — **found and
+  fixed Pass 15**, see §5.
 
 ---
 
 ## 4. In progress right now
 
-Session 7 (admin dashboard) is written (Pass 14) but needs live
-verification against the real Neon database and a browser check of
-`/admin` — see §6. Nothing else in progress. Sessions 1-6 are all
-closed and confirmed live. Optional, non-blocking follow-up carried
-over from Pass 11: manually click through the `/partner` frontend page
-in a browser at some point.
+Nothing in progress. Sessions 1-7 are all closed and confirmed live.
+Session 8 (polish) is the next task to pick up — see §6. Optional,
+non-blocking follow-up carried over from Pass 11: manually click
+through the `/partner` frontend page in a browser at some point (its
+endpoints are verified live, the page itself just hasn't been clicked
+through specifically).
 
 ---
 
@@ -1328,41 +1379,42 @@ in a browser at some point.
   documented wall. Code written this pass was typechecked/built as far
   as this limitation allows; live DB verification still needs a real
   machine, same as every session before it.
+- **Found and fixed, Pass 15:** admin post-login redirect went to
+  `/dashboard` (CITIZEN-only) instead of `/admin`, bouncing the admin
+  straight back to `/login` — looked like login wasn't working at all.
+  Root cause: `LoginPage.tsx`'s `dashboardPathFor()` helper (Session 3)
+  never got an ADMIN case added when Session 7 introduced the ADMIN
+  role's own route — Session 7 updated `App.tsx`'s `HomeRedirect` but
+  missed this separate helper. Fixed by adding the ADMIN branch to
+  `dashboardPathFor()`. Verified fixed live on a real machine.
 
 ---
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Session 7 (admin dashboard) is written (Pass 14) but not yet verified
-live.** The immediate next task is finishing that verification, on a
-real machine with real internet access (same pattern as every
-DB-touching session before it):
-- `cd apps/backend && npx prisma generate && pnpm dev` (in one
-  terminal), then confirm `GET /api/v1/health` still returns
-  `db: "connected"`.
-- Log in as `admin@demo.local` / `Demo@1234`, call
-  `GET /api/v1/admin/dashboard` with that token, and confirm the JSON
-  shape matches §8 and the counts look right against what's actually in
-  the database (there's a `COMPLETED` `WATER` challenge from Pass 13's
-  verification that should show up — see Pass 14's log entry for
-  specifics).
-- Start the frontend (`pnpm dev` in `apps/frontend`), open `/admin` in
-  a browser logged in as the admin demo account, and confirm the page
-  renders those same numbers without erroring.
-- Once that's confirmed, update this file to close out Session 7 (mark
-  it done/verified in §1, §3, §5's next-task note) and move on to
-  **Session 8 — Polish** (per PROJECT_REFERENCE.md §5): mobile
-  responsiveness, loading/empty/error states, accessibility, and a full
-  run of the manual test checklist in PROJECT_REFERENCE.md §7. Do not
-  start Session 8 before Session 7 is confirmed live — same phase-order
-  rule as every prior session boundary.
-- Stick to just this — no manual reassignment or other Priority-B items
-  (PROJECT_REFERENCE.md §2) alongside it.
+**Session 7 is fully done and verified live (Pass 15). Session 8 —
+Polish — is next** (per PROJECT_REFERENCE.md §5, table row 8):
+- Mobile responsiveness across all existing pages (`/login`,
+  `/register`, `/submit`, `/dashboard`, `/partner`, `/admin`).
+- Loading/empty/error states — check every page handles: the initial
+  loading moment, an empty list (e.g. a citizen with no challenges yet,
+  a partner with none assigned), and a failed request, rather than
+  just the happy path each was built against.
+- Accessibility pass — basic things like form labels, focus states,
+  color contrast, keyboard navigation.
+- Run the **full manual test checklist in PROJECT_REFERENCE.md §7**
+  (all 14 items) as one continuous sequential pass, not relying on the
+  fact that each item has technically been verified individually across
+  earlier passes. This is what actually closes Session 8 out.
+- Stick to just this — no new features, no Priority-B items
+  (PROJECT_REFERENCE.md §2), and no Session 9 (deploy) work yet. Same
+  phase-order rule as every prior session boundary.
 
 Optional, non-blocking, whenever convenient: manually open the
 `/partner` page in a browser and click through it once (see §3/§4) —
 its endpoints are verified live, but nobody has looked at the actual UI
-yet.
+yet. This overlaps naturally with the Session 8 checklist run above, so
+it may get covered there anyway.
 
 One environment note carried over: if testing from a phone via
 Termux+proot, expect Prisma's query engine to fail to connect even when
@@ -1471,7 +1523,7 @@ PATCH /api/v1/notifications/:id/read -> Notification    (ownership-checked;
 GET   /api/v1/admin/dashboard -> { totalChallenges, byDomain, byStatus,
                             partnersEngaged, completedCount }
                             (ADMIN only, dedicated query — written Pass 14,
-                            NOT YET verified live — see §6)
+                            verified live Pass 15)
 ```
 Auth: written Pass 6, **verified working against the real database Pass 7**.
 Challenges POST/GET base behavior: written Pass 8, **verified working
@@ -1480,9 +1532,10 @@ GET's PARTNER branch, and both PATCH endpoints: written Pass 9/10,
 **verified live against the real database — Pass 11**. Matches
 PROJECT_REFERENCE.md §8 exactly. Notifications endpoints: written Pass
 12, **verified live (API + UI) — Pass 13**. Matches PROJECT_REFERENCE.md
-§8 exactly. Admin dashboard endpoint: written Pass 14, **not yet
-verified live** — matches the §8 shape as written, but hasn't been run
-against the real database yet (see §6 for the exact verification steps).
+§8 exactly. Admin dashboard endpoint: written Pass 14, **verified live
+(API + UI) — Pass 15**. Matches PROJECT_REFERENCE.md §8 exactly. All
+API endpoints in the frozen §8 contract are now written and verified
+live — Session 8 (polish) is the only remaining session before deploy.
 
 ---
 
