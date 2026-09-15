@@ -1188,6 +1188,35 @@ resize check, and the `/partner` click-through — all of which need a
 real machine with real internet access to Neon, same as every DB-
 touching step in every prior session. See §6.
 
+### Pass 17 — 2026-09-15 — frPyP — Session 8 (polish) CLOSED: live verification done on a real machine
+Branch/commit: main (direct push)
+Did:
+- frPyP ran the live-verification half of Session 8 that Pass 16 could
+  not do from its sandbox, on a real machine with real internet access
+  to Neon:
+  - The full manual test checklist in PROJECT_REFERENCE.md §7, all 14
+    items, run as one continuous sequential pass (not item-by-item
+    across separate earlier sessions) — confirmed passing.
+  - Resized a real browser window (and checked on a real phone) across
+    `/login`, `/register`, `/submit`, `/dashboard`, `/partner`,
+    `/admin` — the Pass 16 mobile-layout fixes (header stacking, title
+    truncation, username hidden below `sm:`) hold up in practice, not
+    just in the Tailwind class names.
+  - Clicked through the `/partner` page in an actual browser for the
+    first time (carried over from Pass 11/15) — confirmed working
+    against the live, assigned-challenge data.
+- This closes out every item §6/§4 had listed as blocking Session 8.
+Files touched: none — this pass is verification only, no code changed.
+Decisions made: none.
+Deviations from spec: none.
+Bugs found/fixed: none found during this live pass — Pass 16's
+  code-level fixes held up as written.
+Left in a broken/incomplete state: nothing — **Session 8 is now fully
+  closed.**
+Anything the next person picking this up needs to know: all 8 sessions
+  of Priority-A scope (PROJECT_REFERENCE.md §2/§5) are now written and
+  verified live. The only session left is Session 9 (deploy) — see §6.
+
 ---
 
 ## 1. Current phase
@@ -1215,12 +1244,13 @@ and confirmed live** — `GET /admin/dashboard` and the `/admin` frontend
 page were both verified against the real Neon database on a real
 machine (Pass 15), including a bug found and fixed during that check
 (admin post-login redirect was going to `/dashboard` instead of
-`/admin` — see §5). **Session 8 (polish) is in progress, not closed**
-— the accessibility and mobile-layout fixes achievable without a live
-database are done (Pass 16), but the full §7 manual checklist run, a
-real-browser mobile-resize check, and the `/partner` click-through
-still need to happen on a real machine before Session 8 can be marked
-done — see §4/§6.
+`/admin` — see §5). **Session 8 (polish) is done and confirmed live**
+— the accessibility and mobile-layout fixes were written Pass 16, and
+the live-verification half (full §7 checklist as one continuous pass,
+real-browser mobile-resize check, `/partner` click-through) was run
+and confirmed by frPyP on a real machine — see Pass 17. **All 8
+sessions of Priority-A scope are now written and verified live.**
+Session 9 (deploy) is next — see §4/§6.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -1404,7 +1434,7 @@ people editing the same module in the same day is how things get lost.
   instead of `/admin`, bouncing them back to `/login`) — **found and
   fixed Pass 15**, see §5.
 
-### Session 8 (polish) — in progress, see §4/§6
+### Session 8 (polish) — DONE, verified live (Pass 17), see §6 for Session 9
 - Form accessibility (Login, Register, Submit-challenge pages): every
   field now has a real `<label htmlFor>`/`id` pair,
   `aria-invalid`/`aria-describedby` on validation errors,
@@ -1426,28 +1456,20 @@ people editing the same module in the same day is how things get lost.
   not by resizing a real browser window yet.
 - `tsc --noEmit` and `npm run build` both clean after every change
   this pass.
-- **Not done yet:** the full §7 manual checklist as one live sequential
-  pass, the `/partner` page click-through, and an actual resized-
-  browser/device check of the mobile-layout fixes above — all blocked
-  on this sandbox's lack of DB access (see Pass 16 log entry). This is
-  what's left to close Session 8.
+- **Live-verified — Pass 17:** the full §7 manual checklist (all 14
+  items, one continuous sequential pass), the `/partner` page click-
+  through, and a real resized-browser/device check of the mobile-
+  layout fixes above were all run by frPyP on a real machine with real
+  Neon access. No discrepancies found. **Session 8 is closed.**
 
 ---
 
 ## 4. In progress right now
 
-**Session 8 (polish) is in progress.** The code-level accessibility and
-mobile-layout fixes are done and pushed (Pass 16, see §3). What's left
-to close it out, all blocked on needing a real machine with real
-internet access to Neon (this sandbox can't reach it — see Pass 16 log):
-- Run the full manual test checklist (PROJECT_REFERENCE.md §7, all 14
-  items) as one continuous live sequential pass.
-- Actually resize a real browser window / check on a real phone to
-  confirm the mobile-layout fixes from Pass 16 hold up, not just that
-  they read correctly in the JSX.
-- Click through the `/partner` frontend page in a browser at least once
-  (carried over from Pass 11/15 — its endpoints are verified live, the
-  page itself still hasn't been opened and clicked through).
+**Nothing is in progress.** Session 8 (polish) is closed — code written
+Pass 16, live-verified by frPyP Pass 17 (full §7 checklist, mobile
+resize check, `/partner` click-through, see §3). **Session 9 (deploy)
+has not been started yet** — see §6 for what it involves.
 
 ---
 
@@ -1547,40 +1569,38 @@ internet access to Neon (this sandbox can't reach it — see Pass 16 log):
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Session 8 (polish) is in progress, not done. What's left is the
-live-verification half** (per PROJECT_REFERENCE.md §5, table row 8) —
-the code-side accessibility/mobile-layout work is done, see §3/Pass 16:
+**Session 8 (polish) is fully closed (Pass 17). Session 9 (deploy) is
+next** — per PROJECT_REFERENCE.md §5, table row 9, this is the last
+session:
 
-- Run the **full manual test checklist in PROJECT_REFERENCE.md §7**
-  (all 14 items) as one continuous sequential pass, not relying on the
-  fact that each item has technically been verified individually across
-  earlier passes. This is what actually closes Session 8 out, and it
-  needs a real machine (see environment note below) — every sandboxed
-  pass so far, Pass 16 included, has been unable to reach Neon at all.
-- On that same real machine, actually resize a real browser window (or
-  check on a phone) across `/login`, `/register`, `/submit`,
-  `/dashboard`, `/partner`, `/admin` to confirm the mobile-layout fixes
-  from Pass 16 hold up in practice, not just that they read correctly
-  in the Tailwind classes.
-- Manually open the `/partner` page in a browser and click through it
-  at least once (carried over from Pass 11/15) — its endpoints are
-  verified live, but nobody has looked at the actual UI yet. This
-  overlaps naturally with the checklist run above.
-- If anything comes up during that live pass — a genuine accessibility,
-  layout, or error-handling gap Pass 16's code review didn't catch —
-  fix it as part of closing Session 8, still within Session 8's own
-  scope (no new features, no Priority-B items from PROJECT_REFERENCE.md
-  §2, no Session 9/deploy work). Same phase-order rule as every prior
-  session boundary.
+- Deploy frontend to Vercel, backend to Render, keep using the existing
+  Neon Postgres instance (all three already named as the fixed stack in
+  PROJECT_REFERENCE.md §4 — no new tools to approve for the deploy
+  targets themselves, but standing up accounts/projects on Vercel and
+  Render, and whatever CLI or config files that needs, hasn't happened
+  yet and should be confirmed before assuming any specific approach).
+- Seed the production database with demo data (citizen, 4 partners,
+  admin — same shape as the existing local seed script, see §0 Pass 1
+  and §10).
+- Rehearse the full demo story end to end (PROJECT_REFERENCE.md §1)
+  against the deployed URLs, not just localhost.
+- Write a README (setup/run instructions) and a simple architecture
+  diagram — neither exists yet.
 
-One environment note carried over: if testing from a phone via
-Termux+proot, expect Prisma's query engine to fail to connect even when
-the database is fine (Session 1, Pass 5). Sandboxed dev environments used
-for every pass since (Pass 6, 8, 9, 10, 12, 14, 16) had a different but
-equally blocking issue: no network access to Neon's Postgres port or to
-Prisma's engine-download host at all. **Pass 11 confirmed the fix is
-simply to do DB-touching work on a real machine with real internet
-access** — worked immediately, no other changes needed.
+Same phase-order rule as every prior session boundary: no Priority-B
+items from PROJECT_REFERENCE.md §2, nothing beyond what §5 row 9
+actually asks for.
+
+One environment note carried over: sandboxed dev environments (this one
+included, as of Pass 17's writing) have no network access to Neon's
+Postgres port, to Prisma's engine-download host, or — relevant for
+Session 9 specifically — to Vercel's or Render's deploy APIs, since none
+of those hosts are on this environment's network allowlist. **Pass 11
+confirmed the fix for DB work is doing it on a real machine with real
+internet access; the same is expected to hold for the actual deploy
+steps in Session 9** — worth confirming account access/credentials for
+Vercel and Render before assuming how much of Session 9 can be driven
+from any given sandbox versus a real machine.
 
 ---
 
@@ -1692,7 +1712,8 @@ PROJECT_REFERENCE.md §8 exactly. Notifications endpoints: written Pass
 §8 exactly. Admin dashboard endpoint: written Pass 14, **verified live
 (API + UI) — Pass 15**. Matches PROJECT_REFERENCE.md §8 exactly. All
 API endpoints in the frozen §8 contract are now written and verified
-live — Session 8 (polish) is the only remaining session before deploy.
+live. Session 8 (polish) is also done and verified live (Pass 17) —
+Session 9 (deploy) is the only remaining session, see §6.
 
 ---
 
