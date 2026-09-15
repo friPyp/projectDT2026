@@ -1217,6 +1217,47 @@ Anything the next person picking this up needs to know: all 8 sessions
   of Priority-A scope (PROJECT_REFERENCE.md §2/§5) are now written and
   verified live. The only session left is Session 9 (deploy) — see §6.
 
+### Pass 18 — 2026-09-16 — frPyP — Session 9 (deploy) CLOSED: deployed, seeded, demo rehearsed live, docs added
+Branch/commit: main (direct push)
+Did:
+- Frontend deployed to Vercel (`project-dt-2026-frontend.vercel.app`) and
+  backend deployed to Render (`projectdt2026.onrender.com`), both wired
+  to the existing Neon instance — no new database stood up. Account/
+  project setup on Vercel and Render was done in an earlier chat session
+  that reached the deploy step but hit its length limit before logging
+  anything here; this pass confirmed both are live and working (backend
+  health check returns `{success:true, db:"connected"}`; frontend serves
+  and renders correctly).
+- Confirmed the production database is already seeded with the standard
+  demo accounts (citizen, admin, 4 partners) — frPyP logged into the
+  live frontend as `citizen@demo.local` and it worked.
+- Root `README.md` added: live links, demo accounts table, tech stack,
+  local dev setup instructions, and a Mermaid architecture diagram
+  (renders natively on GitHub — no new dependency added).
+- Full demo story (PROJECT_REFERENCE.md §1) rehearsed live end-to-end
+  against the deployed URLs by frPyP: citizen submitted a challenge, it
+  was correctly auto-categorized and auto-routed to the matching
+  partner, the partner set a team and moved status
+  `ASSIGNED → IN_PROGRESS → COMPLETED`, the citizen's dashboard reflected
+  the change with notifications for both `CHALLENGE_ASSIGNED` and
+  `STATUS_UPDATED`, and the admin dashboard totals matched. Covers §7
+  checklist items 1–10 and 14. Items 11–13 (cross-account isolation)
+  weren't separately re-tested this pass but remain covered by Pass 11's
+  live ownership-check verification and the unchanged backend
+  authorization logic.
+Files touched: `README.md` (new). No application code touched — Session
+9 is deploy/docs work only.
+Decisions made: none requiring a call.
+Deviations from spec: none.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: nothing. **Session 9 is now closed —
+all 9 sessions of PROJECT_REFERENCE.md §5 are done, deployed, and
+verified live end to end.**
+Anything the next person picking this up needs to know: the project is
+feature-complete per PROJECT_REFERENCE.md §2's Priority-A scope.
+Anything further is a Priority-B item (§2) or a new ask — start a fresh
+pass entry here rather than assuming scope.
+
 ---
 
 ## 1. Current phase
@@ -1248,9 +1289,12 @@ machine (Pass 15), including a bug found and fixed during that check
 — the accessibility and mobile-layout fixes were written Pass 16, and
 the live-verification half (full §7 checklist as one continuous pass,
 real-browser mobile-resize check, `/partner` click-through) was run
-and confirmed by frPyP on a real machine — see Pass 17. **All 8
-sessions of Priority-A scope are now written and verified live.**
-Session 9 (deploy) is next — see §4/§6.
+and confirmed by frPyP on a real machine — see Pass 17. **All 8 sessions of Priority-A scope were
+written and verified live, and Session 9 (deploy) is now also closed
+(Pass 18)** — deployed to Vercel/Render/Neon, production data
+confirmed seeded, full demo story rehearsed live end to end, README +
+architecture diagram added. **All 9 sessions of PROJECT_REFERENCE.md
+§5 are complete.**
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -1462,14 +1506,31 @@ people editing the same module in the same day is how things get lost.
   layout fixes above were all run by frPyP on a real machine with real
   Neon access. No discrepancies found. **Session 8 is closed.**
 
+### Deployment (Session 9)
+- Frontend deployed to Vercel: `project-dt-2026-frontend.vercel.app`
+- Backend deployed to Render: `projectdt2026.onrender.com` (health
+  check confirms DB connectivity)
+- Both wired to the existing Neon instance — no new database stood up.
+- Production database confirmed seeded with the standard demo accounts
+  (§10) — confirmed via a real login against the live URL.
+- **Verified live end to end — Pass 18:** full demo story
+  (PROJECT_REFERENCE.md §1) run against the deployed URLs by frPyP —
+  submission, auto-categorization, auto-routing, partner status
+  transitions, citizen-side notifications, and admin dashboard totals
+  all confirmed correct.
+
+### Docs
+- Root `README.md`: **written Pass 18** — live links, demo accounts,
+  tech stack, local dev setup, and a Mermaid architecture diagram.
+
 ---
 
 ## 4. In progress right now
 
-**Nothing is in progress.** Session 8 (polish) is closed — code written
-Pass 16, live-verified by frPyP Pass 17 (full §7 checklist, mobile
-resize check, `/partner` click-through, see §3). **Session 9 (deploy)
-has not been started yet** — see §6 for what it involves.
+**Nothing is in progress.** All 9 sessions are closed — Session 8
+(polish) Pass 17, Session 9 (deploy) Pass 18. The project is
+feature-complete and demo-ready per PROJECT_REFERENCE.md §2/§5. Next
+work, if any, would be a Priority-B item or a new ask — see §6.
 
 ---
 
@@ -1569,38 +1630,27 @@ has not been started yet** — see §6 for what it involves.
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Session 8 (polish) is fully closed (Pass 17). Session 9 (deploy) is
-next** — per PROJECT_REFERENCE.md §5, table row 9, this is the last
-session:
+**All 9 sessions are closed (Pass 18) — the project is feature-complete
+per PROJECT_REFERENCE.md §2/§5, deployed, seeded, and demo-verified
+live end to end.**
 
-- Deploy frontend to Vercel, backend to Render, keep using the existing
-  Neon Postgres instance (all three already named as the fixed stack in
-  PROJECT_REFERENCE.md §4 — no new tools to approve for the deploy
-  targets themselves, but standing up accounts/projects on Vercel and
-  Render, and whatever CLI or config files that needs, hasn't happened
-  yet and should be confirmed before assuming any specific approach).
-- Seed the production database with demo data (citizen, 4 partners,
-  admin — same shape as the existing local seed script, see §0 Pass 1
-  and §10).
-- Rehearse the full demo story end to end (PROJECT_REFERENCE.md §1)
-  against the deployed URLs, not just localhost.
-- Write a README (setup/run instructions) and a simple architecture
-  diagram — neither exists yet.
+There is no next numbered session. Anything further is either:
+- A Priority-B item from PROJECT_REFERENCE.md §2 (admin manual
+  reassignment, dedup detection, richer partner profiles, mobile
+  polish pass, richer error states) — only if explicitly requested.
+- A new ask outside the original scope.
 
-Same phase-order rule as every prior session boundary: no Priority-B
-items from PROJECT_REFERENCE.md §2, nothing beyond what §5 row 9
-actually asks for.
+Either way: flag it against PROJECT_REFERENCE.md first if anything
+conflicts, get a yes before adding any new library/tool, and log it as
+its own pass in §0 rather than assuming scope.
 
-One environment note carried over: sandboxed dev environments (this one
-included, as of Pass 17's writing) have no network access to Neon's
-Postgres port, to Prisma's engine-download host, or — relevant for
-Session 9 specifically — to Vercel's or Render's deploy APIs, since none
-of those hosts are on this environment's network allowlist. **Pass 11
-confirmed the fix for DB work is doing it on a real machine with real
-internet access; the same is expected to hold for the actual deploy
-steps in Session 9** — worth confirming account access/credentials for
-Vercel and Render before assuming how much of Session 9 can be driven
-from any given sandbox versus a real machine.
+Environment note carried over for whoever picks up DB- or
+deploy-touching work next: sandboxed dev environments (this one
+included) have no network access to Neon's Postgres port, Prisma's
+engine-download host, or Vercel's/Render's deploy APIs. Pass 11
+confirmed the fix is doing that work on a real machine with real
+internet access; Pass 18 confirmed the same holds for verifying a live
+deploy specifically.
 
 ---
 
@@ -1653,7 +1703,11 @@ from any given sandbox versus a real machine.
 ```
 DATABASE_URL=      # Neon Postgres connection string (see repo owner for it; kept out of git)
 JWT_SECRET=        # any random string for local dev
-PORT=4000
+PORT=4000          # backend port (Render sets this itself in production)
+VITE_API_URL=      # frontend build-time var, base URL + /api/v1 of the backend
+                    # (e.g. https://projectdt2026.onrender.com/api/v1 in production;
+                    # defaults to http://localhost:4000/api/v1 if unset — see
+                    # apps/frontend/src/lib/api.ts). Set on Vercel, not committed.
 ```
 
 ---
@@ -1712,8 +1766,9 @@ PROJECT_REFERENCE.md §8 exactly. Notifications endpoints: written Pass
 §8 exactly. Admin dashboard endpoint: written Pass 14, **verified live
 (API + UI) — Pass 15**. Matches PROJECT_REFERENCE.md §8 exactly. All
 API endpoints in the frozen §8 contract are now written and verified
-live. Session 8 (polish) is also done and verified live (Pass 17) —
-Session 9 (deploy) is the only remaining session, see §6.
+live. Session 8 (polish) is also done and verified live (Pass 17), and
+Session 9 (deploy) closed out the project (Pass 18) — all 9 sessions
+per PROJECT_REFERENCE.md §5 are complete.
 
 ---
 
