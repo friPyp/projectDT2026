@@ -19,10 +19,28 @@ function NotificationsList() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
-  if (isLoading || isError || !data || data.length === 0) {
-    // Session 6 spec doesn't call for an empty/error state here beyond
-    // just not showing the section — the challenges list below still
-    // carries the page on a first visit with nothing to notify about yet.
+  if (isLoading) {
+    // Quiet on the loading tick too — the challenges list below has its
+    // own loading state, no need for two loading messages stacked.
+    return null;
+  }
+
+  if (isError) {
+    // Session 6 spec didn't call for an error state here, but silently
+    // hiding a failed fetch is a Session 8 gap — a citizen with an
+    // unread assignment notice deserves to know it didn't load, not
+    // just see it missing.
+    return (
+      <p role="alert" className="mb-6 text-sm text-red-600">
+        Couldn't load notifications.
+      </p>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    // Session 6 spec doesn't call for an empty state here beyond just
+    // not showing the section — the challenges list below still carries
+    // the page on a first visit with nothing to notify about yet.
     return null;
   }
 
@@ -37,18 +55,32 @@ function NotificationsList() {
       </div>
       <ul className="divide-y divide-slate-100">
         {data.map((n: Notification) => (
-          <li
-            key={n.id}
-            onClick={() => !n.read && readMutation.mutate(n.id)}
-            className={`px-4 py-3 text-sm ${n.read ? "text-slate-500" : "text-slate-900 bg-slate-50 cursor-pointer"}`}
-          >
-            <div className="flex items-start gap-2">
-              {!n.read && <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />}
-              <div>
-                <p className="font-medium">{n.title}</p>
-                <p className="text-slate-500">{n.message}</p>
+          <li key={n.id}>
+            {n.read ? (
+              <div className="px-4 py-3 text-sm text-slate-500">
+                <div className="flex items-start gap-2">
+                  <div>
+                    <p className="font-medium">{n.title}</p>
+                    <p className="text-slate-500">{n.message}</p>
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => readMutation.mutate(n.id)}
+                className="w-full text-left px-4 py-3 text-sm text-slate-900 bg-slate-50 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400"
+                aria-label={`Mark notification as read: ${n.title}`}
+              >
+                <div className="flex items-start gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />
+                  <div>
+                    <p className="font-medium">{n.title}</p>
+                    <p className="text-slate-500">{n.message}</p>
+                  </div>
+                </div>
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -72,7 +104,7 @@ export default function DashboardPage() {
           </div>
           <Link
             to="/submit"
-            className="rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-800 whitespace-nowrap"
+            className="rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-800 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400"
           >
             + New challenge
           </Link>
@@ -80,10 +112,14 @@ export default function DashboardPage() {
 
         <NotificationsList />
 
-        {isLoading && <p className="text-sm text-slate-500">Loading...</p>}
+        {isLoading && (
+          <p aria-live="polite" className="text-sm text-slate-500">
+            Loading...
+          </p>
+        )}
 
         {isError && (
-          <p className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-red-600">
             {error instanceof Error ? error.message : "Couldn't load your challenges."}
           </p>
         )}
@@ -91,7 +127,10 @@ export default function DashboardPage() {
         {data && data.length === 0 && (
           <div className="text-center bg-white rounded-xl border border-dashed border-slate-300 py-12 px-6">
             <p className="text-slate-600 mb-4">You haven't submitted any challenges yet.</p>
-            <Link to="/submit" className="text-slate-900 font-medium hover:underline">
+            <Link
+              to="/submit"
+              className="text-slate-900 font-medium hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400 rounded"
+            >
               Submit your first one
             </Link>
           </div>
