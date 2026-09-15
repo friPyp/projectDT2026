@@ -65,31 +65,54 @@ export default function SubmitChallengePage() {
           noValidate
         >
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+            <label htmlFor="submit-title" className="block text-sm font-medium text-slate-700 mb-1">
+              Title
+            </label>
             <input
+              id="submit-title"
               type="text"
               {...register("title", { required: "Title is required.", maxLength: { value: 200, message: "Title is too long." } })}
+              aria-invalid={errors.title ? "true" : "false"}
+              aria-describedby={errors.title ? "submit-title-error" : undefined}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
               placeholder="Short summary of the problem"
             />
-            {errors.title && <p className="text-xs text-red-600 mt-1">{errors.title.message}</p>}
+            {errors.title && (
+              <p id="submit-title-error" className="text-xs text-red-600 mt-1">
+                {errors.title.message}
+              </p>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+            <label htmlFor="submit-description" className="block text-sm font-medium text-slate-700 mb-1">
+              Description
+            </label>
             <textarea
+              id="submit-description"
               {...register("description", { required: "Description is required." })}
               rows={5}
+              aria-invalid={errors.description ? "true" : "false"}
+              aria-describedby={errors.description ? "submit-description-error" : undefined}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
               placeholder="What's going on, and what would help?"
             />
-            {errors.description && <p className="text-xs text-red-600 mt-1">{errors.description.message}</p>}
+            {errors.description && (
+              <p id="submit-description-error" className="text-xs text-red-600 mt-1">
+                {errors.description.message}
+              </p>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+            <label htmlFor="submit-category" className="block text-sm font-medium text-slate-700 mb-1">
+              Category
+            </label>
             <select
+              id="submit-category"
               {...register("category", { required: "Choose a category." })}
+              aria-invalid={errors.category ? "true" : "false"}
+              aria-describedby={errors.category ? "submit-category-error" : undefined}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 bg-white"
             >
               <option value="">Select a category</option>
@@ -99,25 +122,42 @@ export default function SubmitChallengePage() {
                 </option>
               ))}
             </select>
-            {errors.category && <p className="text-xs text-red-600 mt-1">{errors.category.message}</p>}
+            {errors.category && (
+              <p id="submit-category-error" className="text-xs text-red-600 mt-1">
+                {errors.category.message}
+              </p>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">District</label>
+            <label htmlFor="submit-district" className="block text-sm font-medium text-slate-700 mb-1">
+              District
+            </label>
             <input
+              id="submit-district"
               type="text"
               {...register("district", { required: "District is required." })}
+              aria-invalid={errors.district ? "true" : "false"}
+              aria-describedby={errors.district ? "submit-district-error" : undefined}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
             />
-            {errors.district && <p className="text-xs text-red-600 mt-1">{errors.district.message}</p>}
+            {errors.district && (
+              <p id="submit-district-error" className="text-xs text-red-600 mt-1">
+                {errors.district.message}
+              </p>
+            )}
           </div>
 
-          {serverError && <p className="text-sm text-red-600">{serverError}</p>}
+          {serverError && (
+            <p role="alert" className="text-sm text-red-600">
+              {serverError}
+            </p>
+          )}
 
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="w-full rounded-lg bg-slate-900 text-white text-sm font-medium py-2.5 hover:bg-slate-800 disabled:opacity-50"
+            className="w-full rounded-lg bg-slate-900 text-white text-sm font-medium py-2.5 hover:bg-slate-800 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400"
           >
             {mutation.isPending ? "Submitting..." : "Submit challenge"}
           </button>
