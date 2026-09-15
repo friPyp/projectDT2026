@@ -97,14 +97,14 @@ export default function DashboardPage() {
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">Your challenges</h1>
             <p className="text-sm text-slate-500">Everything you've submitted, and where it stands.</p>
           </div>
           <Link
             to="/submit"
-            className="rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-800 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400"
+            className="rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-800 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400 self-start sm:self-auto"
           >
             + New challenge
           </Link>
