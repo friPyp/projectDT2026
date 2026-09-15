@@ -1090,6 +1090,106 @@ Anything the next person picking this up needs to know:
 
 ---
 
+### Pass 16 — 2026-09-15 — frPyP — Session 8 (polish) started: accessibility + mobile-layout fixes, no live DB reachable this pass
+Branch/commit: main (4 checkpoint pushes this pass — see commits
+716d512, 4472ac8, b10e04a, b328151)
+Did:
+- Confirmed this session's sandbox has the same environment constraint as
+  every prior pass (Pass 4/6/8/9/10/11/12/14): direct TCP to Neon's
+  Postgres port (5432) times out while HTTPS (443) to the same host
+  completes a full TLS handshake; `binaries.prisma.sh` also 403s. Checked
+  explicitly this time with a raw TCP test before starting, rather than
+  discovering it mid-task. No DB-touching work or live-browser
+  verification was possible here as a result — see §6 for what that
+  leaves outstanding.
+- Worked the parts of Session 8 (PROJECT_REFERENCE.md §5 row 8) that
+  don't need a live database: accessibility and mobile-layout polish
+  across all five app pages plus the shared header, verified with
+  `tsc --noEmit` and `npm run build` (both clean) after every change,
+  no code execution against real data needed for either check.
+- Login/Register/Submit-challenge pages: every form field now has a
+  proper `<label htmlFor>`/`id` pair (previously label and input were
+  visually stacked but not programmatically associated — a screen
+  reader wouldn't announce which label went with which field), plus
+  `aria-invalid`/`aria-describedby` wired to the existing validation
+  messages, and `focus-visible` rings added to submit buttons.
+- Citizen dashboard notifications list: was a `<li onClick>` — not
+  reachable by keyboard at all. Converted the unread items to real
+  `<button>` elements (read items stay static, non-interactive `<div>`s,
+  matching their non-clickable state). Also found and fixed a real gap:
+  the section silently rendered nothing (`return null`) on a fetch
+  error, indistinguishable from "no notifications" — it now shows a
+  `role="alert"` error message instead.
+- Partner dashboard: labeled the team-name input (visually-hidden label,
+  since the placeholder text isn't a substitute for a real label),
+  added `focus-visible` rings to its two buttons, `role="alert"` on its
+  inline error text.
+- Admin dashboard: `aria-live="polite"` on the loading state, `role="alert"`
+  on the error state (it had no empty state to begin with — correctly,
+  since the totals response is never an empty list).
+- Shared header (`AppLayout.tsx`): the title + username + logout row
+  could have overflowed on very narrow phone screens with a long name —
+  added `truncate` to the title, hid the username below the `sm:`
+  breakpoint instead of letting it get clipped, added a focus ring to
+  logout.
+- Citizen dashboard top row (title + "New challenge" button): switched
+  from a single `flex justify-between` row to `flex-col` on narrow
+  screens / `flex-row` from `sm:` up, so the button doesn't get
+  squeezed next to the title text on the smallest phone widths.
+- `index.html`'s `<title>` was still the Vite scaffold default
+  ("frontend") — changed it to "Civic Challenge Platform". Minor, but
+  it's a real-content gap a polish pass should catch (browser tab
+  title, screen-reader "page title" announcement).
+- Read through `apps/backend/src/routes/{auth,challenges}.ts` end to
+  end against PROJECT_REFERENCE.md §7's checklist and §8's contract as
+  a logic sanity-check (ownership checks, forward-only status
+  transitions, role gating, notification trigger points). Found no
+  discrepancies — this matches what Pass 11/13/15 already verified
+  live. Read-only — nothing here was modified, per the "don't rewrite
+  working/done code" rule.
+Files touched: `apps/frontend/src/pages/LoginPage.tsx`,
+`RegisterPage.tsx`, `SubmitChallengePage.tsx`, `DashboardPage.tsx`,
+`PartnerDashboardPage.tsx`, `AdminDashboardPage.tsx`,
+`apps/frontend/src/components/AppLayout.tsx`, `apps/frontend/index.html`.
+No backend files touched. No new dependencies added.
+Decisions made: none requiring a call — every change above is additive
+polish within Session 8's own scope (PROJECT_REFERENCE.md §2/§5), no
+new features, no Priority-B items, no Session 9 work.
+Deviations from spec: none.
+Bugs found/fixed: the notifications-error-swallowing gap described
+above (not a previously-logged bug, just discovered during this pass's
+error-state review).
+Left in a broken/incomplete state — Session 8 is NOT closed yet:
+- **Mobile responsiveness**: spot-checked and fixed two real narrow-
+  screen issues (dashboard header row, `AppLayout` header row) by
+  reading the JSX/Tailwind classes for overflow risk at small widths —
+  not the same as actually opening each page in a resized real browser
+  or on a device. That visual confirmation still needs to happen on a
+  real machine.
+- **Loading/empty/error states**: reviewed every page; fixed the one
+  real gap found (notifications silently hiding errors). Everything
+  else already had a loading/empty/error state from earlier sessions.
+- **Full manual test checklist (PROJECT_REFERENCE.md §7, all 14
+  items)**: NOT run as a live sequential pass this session — this
+  sandbox cannot reach the database (see above), so nothing that
+  touches real data (registration, login, submission, routing, status
+  transitions, notifications firing, admin totals, the three ownership-
+  isolation checks) could actually be exercised here. Reading the
+  backend route code against each item didn't turn up discrepancies,
+  but that is not the same thing as running the checklist for real —
+  Session 8 isn't closed until someone does that on a real machine.
+- The `/partner` page still hasn't been manually clicked through in an
+  actual browser (carried over from Pass 11/15) — same blocker.
+Anything the next person picking this up needs to know: the code-level
+half of Session 8 (accessibility, mobile-layout fixes, error-state
+gap) is done and pushed. What's left to close Session 8 out is entirely
+the live-verification half — the full §7 checklist run, the mobile
+resize check, and the `/partner` click-through — all of which need a
+real machine with real internet access to Neon, same as every DB-
+touching step in every prior session. See §6.
+
+---
+
 ## 1. Current phase
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -1115,7 +1215,12 @@ and confirmed live** — `GET /admin/dashboard` and the `/admin` frontend
 page were both verified against the real Neon database on a real
 machine (Pass 15), including a bug found and fixed during that check
 (admin post-login redirect was going to `/dashboard` instead of
-`/admin` — see §5). **Session 8 (polish) is the next task** — see §6.
+`/admin` — see §5). **Session 8 (polish) is in progress, not closed**
+— the accessibility and mobile-layout fixes achievable without a live
+database are done (Pass 16), but the full §7 manual checklist run, a
+real-browser mobile-resize check, and the `/partner` click-through
+still need to happen on a real machine before Session 8 can be marked
+done — see §4/§6.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -1299,16 +1404,50 @@ people editing the same module in the same day is how things get lost.
   instead of `/admin`, bouncing them back to `/login`) — **found and
   fixed Pass 15**, see §5.
 
+### Session 8 (polish) — in progress, see §4/§6
+- Form accessibility (Login, Register, Submit-challenge pages): every
+  field now has a real `<label htmlFor>`/`id` pair,
+  `aria-invalid`/`aria-describedby` on validation errors,
+  `focus-visible` rings on submit buttons. **Written Pass 16.** Not
+  independently re-verified with a screen reader — that's a real-
+  browser check, not something `tsc`/`vite build` can confirm.
+- Citizen dashboard notifications: unread items converted from a
+  click-only `<div>` to real `<button>`s (keyboard-operable); a fetch
+  error now shows a message instead of silently rendering nothing.
+  **Written Pass 16.**
+- Partner dashboard: team-name input now has a (visually-hidden) label;
+  `focus-visible` rings added to both buttons. **Written Pass 16.**
+- Admin dashboard: `aria-live` on loading, `role="alert"` on error.
+  **Written Pass 16.**
+- Shared header + citizen dashboard top row: narrow-screen overflow
+  risks fixed (title truncation, username hidden below `sm:`, header
+  row now stacks instead of squeezing the "New challenge" button).
+  **Written Pass 16.** Confirmed by reading the Tailwind breakpoints,
+  not by resizing a real browser window yet.
+- `tsc --noEmit` and `npm run build` both clean after every change
+  this pass.
+- **Not done yet:** the full §7 manual checklist as one live sequential
+  pass, the `/partner` page click-through, and an actual resized-
+  browser/device check of the mobile-layout fixes above — all blocked
+  on this sandbox's lack of DB access (see Pass 16 log entry). This is
+  what's left to close Session 8.
+
 ---
 
 ## 4. In progress right now
 
-Nothing in progress. Sessions 1-7 are all closed and confirmed live.
-Session 8 (polish) is the next task to pick up — see §6. Optional,
-non-blocking follow-up carried over from Pass 11: manually click
-through the `/partner` frontend page in a browser at some point (its
-endpoints are verified live, the page itself just hasn't been clicked
-through specifically).
+**Session 8 (polish) is in progress.** The code-level accessibility and
+mobile-layout fixes are done and pushed (Pass 16, see §3). What's left
+to close it out, all blocked on needing a real machine with real
+internet access to Neon (this sandbox can't reach it — see Pass 16 log):
+- Run the full manual test checklist (PROJECT_REFERENCE.md §7, all 14
+  items) as one continuous live sequential pass.
+- Actually resize a real browser window / check on a real phone to
+  confirm the mobile-layout fixes from Pass 16 hold up, not just that
+  they read correctly in the JSX.
+- Click through the `/partner` frontend page in a browser at least once
+  (carried over from Pass 11/15 — its endpoints are verified live, the
+  page itself still hasn't been opened and clicked through).
 
 ---
 
@@ -1387,39 +1526,57 @@ through specifically).
   role's own route — Session 7 updated `App.tsx`'s `HomeRedirect` but
   missed this separate helper. Fixed by adding the ADMIN branch to
   `dashboardPathFor()`. Verified fixed live on a real machine.
+- **Reconfirmed once more, Pass 16 (Session 8 start):** same symptom
+  as every prior sandboxed pass — direct TCP to Neon's Postgres port
+  times out while HTTPS to the same host completes a full TLS
+  handshake; `binaries.prisma.sh` also 403s. Checked explicitly with a
+  raw TCP test before starting work this time, rather than discovering
+  it partway through. Not a new bug, no new symptom — just the same
+  documented environment wall (Pass 4/6/8/9/10/11/12/14) hitting a fresh
+  sandbox again. Confirms Session 8's live-verification steps (§7
+  checklist, mobile resize check, `/partner` click-through) still need
+  a real machine, same as every DB-touching step before it.
+- **Found and fixed, Pass 16:** the citizen-dashboard notifications
+  section silently rendered nothing on a failed fetch — indistinguishable
+  from "no notifications yet," so a real fetch failure would look like
+  an empty inbox rather than an error. Fixed by giving the error case
+  its own `role="alert"` message instead of falling through the same
+  `return null` branch as the empty case.
 
 ---
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Session 7 is fully done and verified live (Pass 15). Session 8 —
-Polish — is next** (per PROJECT_REFERENCE.md §5, table row 8):
-- Mobile responsiveness across all existing pages (`/login`,
-  `/register`, `/submit`, `/dashboard`, `/partner`, `/admin`).
-- Loading/empty/error states — check every page handles: the initial
-  loading moment, an empty list (e.g. a citizen with no challenges yet,
-  a partner with none assigned), and a failed request, rather than
-  just the happy path each was built against.
-- Accessibility pass — basic things like form labels, focus states,
-  color contrast, keyboard navigation.
+**Session 8 (polish) is in progress, not done. What's left is the
+live-verification half** (per PROJECT_REFERENCE.md §5, table row 8) —
+the code-side accessibility/mobile-layout work is done, see §3/Pass 16:
+
 - Run the **full manual test checklist in PROJECT_REFERENCE.md §7**
   (all 14 items) as one continuous sequential pass, not relying on the
   fact that each item has technically been verified individually across
-  earlier passes. This is what actually closes Session 8 out.
-- Stick to just this — no new features, no Priority-B items
-  (PROJECT_REFERENCE.md §2), and no Session 9 (deploy) work yet. Same
-  phase-order rule as every prior session boundary.
-
-Optional, non-blocking, whenever convenient: manually open the
-`/partner` page in a browser and click through it once (see §3/§4) —
-its endpoints are verified live, but nobody has looked at the actual UI
-yet. This overlaps naturally with the Session 8 checklist run above, so
-it may get covered there anyway.
+  earlier passes. This is what actually closes Session 8 out, and it
+  needs a real machine (see environment note below) — every sandboxed
+  pass so far, Pass 16 included, has been unable to reach Neon at all.
+- On that same real machine, actually resize a real browser window (or
+  check on a phone) across `/login`, `/register`, `/submit`,
+  `/dashboard`, `/partner`, `/admin` to confirm the mobile-layout fixes
+  from Pass 16 hold up in practice, not just that they read correctly
+  in the Tailwind classes.
+- Manually open the `/partner` page in a browser and click through it
+  at least once (carried over from Pass 11/15) — its endpoints are
+  verified live, but nobody has looked at the actual UI yet. This
+  overlaps naturally with the checklist run above.
+- If anything comes up during that live pass — a genuine accessibility,
+  layout, or error-handling gap Pass 16's code review didn't catch —
+  fix it as part of closing Session 8, still within Session 8's own
+  scope (no new features, no Priority-B items from PROJECT_REFERENCE.md
+  §2, no Session 9/deploy work). Same phase-order rule as every prior
+  session boundary.
 
 One environment note carried over: if testing from a phone via
 Termux+proot, expect Prisma's query engine to fail to connect even when
 the database is fine (Session 1, Pass 5). Sandboxed dev environments used
-for every pass since (Pass 6, 8, 9, 10, 12, 14) had a different but
+for every pass since (Pass 6, 8, 9, 10, 12, 14, 16) had a different but
 equally blocking issue: no network access to Neon's Postgres port or to
 Prisma's engine-download host at all. **Pass 11 confirmed the fix is
 simply to do DB-touching work on a real machine with real internet
