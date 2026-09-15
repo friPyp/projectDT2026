@@ -9,7 +9,7 @@ import AppLayout from "../components/AppLayout";
 // Clicking an unread one marks it read via PATCH /notifications/:id/read.
 function NotificationsList() {
   const queryClient = useQueryClient();
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["notifications"],
     queryFn: getNotifications,
   });
@@ -31,8 +31,15 @@ function NotificationsList() {
     // unread assignment notice deserves to know it didn't load, not
     // just see it missing.
     return (
-      <p role="alert" className="mb-6 text-sm text-red-600">
+      <p role="alert" className="mb-6 flex items-center gap-2 text-sm text-red-600">
         Couldn't load notifications.
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="font-medium underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-400 rounded"
+        >
+          Try again
+        </button>
       </p>
     );
   }
@@ -89,7 +96,7 @@ function NotificationsList() {
 }
 
 export default function DashboardPage() {
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["myChallenges"],
     queryFn: getMyChallenges,
   });
@@ -119,8 +126,15 @@ export default function DashboardPage() {
         )}
 
         {isError && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="flex items-center gap-2 text-sm text-red-600">
             {error instanceof Error ? error.message : "Couldn't load your challenges."}
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="font-medium underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-400 rounded"
+            >
+              Try again
+            </button>
           </p>
         )}
 
