@@ -1,7 +1,13 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { ReactNode } from "react";
 import * as api from "./api";
 import type { User } from "./api";
+import { onSessionExpired } from "./authEvents";
+
+// Read by LoginPage to show a one-time "your session expired" message —
+// sessionStorage (not React state) because the redirect to /login is a
+// full route change, not a prop hand-off.
+const SESSION_EXPIRED_FLAG = "sessionExpired";
 
 interface AuthContextValue {
   user: User | null;
@@ -66,6 +72,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // api.ts has no access to this component's state, so it emits an
+  // event instead of calling setUser directly — this is where that
+  // event actually clears the stale session.
+  useEffect(() => {
+    return onSessionExpired(() => {
+      api.clearToken();
+      localStorage.removeItem(USER_KEY);
+      setUser(null);
+      sessionStorage.setItem(SESSION_EXPIRED_FLAG, "1");
+    });
+  }, []);
+
   return (
     <AuthContext.Provider value={{ user, login, register, logout }}>
       {children}
@@ -77,4 +95,12 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
+}
+
+// One-shot read: returns true once right after a session expired and
+// clears the flag, so the message doesn't reappear on a later visit.
+export function consumeSessionExpiredFlag(): boolean {
+  const wasSet = sessionStorage.getItem(SESSION_EXPIRED_FLAG) === "1";
+  if (wasSet) sessionStorage.removeItem(SESSION_EXPIRED_FLAG);
+  return wasSet;
 }

@@ -17,7 +17,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
 }
 
 export default function AdminDashboardPage() {
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["adminDashboard"],
     queryFn: getAdminDashboard,
   });
@@ -37,8 +37,15 @@ export default function AdminDashboardPage() {
         )}
 
         {isError && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="flex items-center gap-2 text-sm text-red-600">
             {error instanceof Error ? error.message : "Couldn't load dashboard totals."}
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="font-medium underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-400 rounded"
+            >
+              Try again
+            </button>
           </p>
         )}
 

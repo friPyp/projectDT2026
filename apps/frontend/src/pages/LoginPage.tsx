@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { useAuth } from "../lib/auth";
+import { useAuth, consumeSessionExpiredFlag } from "../lib/auth";
 import { ApiError } from "../lib/api";
 import type { User } from "../lib/api";
 
@@ -23,6 +23,9 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Read once on first render only — this is a one-shot flag, not
+  // something that should re-check itself on every re-render.
+  const [sessionExpired] = useState(() => consumeSessionExpiredFlag());
 
   const {
     register,
@@ -54,6 +57,12 @@ export default function LoginPage() {
       <div className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-slate-200 p-8">
         <h1 className="text-xl font-semibold text-slate-900 mb-1">Log in</h1>
         <p className="text-sm text-slate-500 mb-6">Citizens, partners, and admins all log in here.</p>
+
+        {sessionExpired && (
+          <p role="status" className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+            Your session expired. Please log in again.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div>

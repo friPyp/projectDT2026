@@ -1,5 +1,6 @@
 // Thin fetch wrapper matching PROJECT_REFERENCE.md §8's frozen shapes.
 // No new HTTP library — plain fetch is enough for this project's needs.
+import { emitSessionExpired } from "./authEvents";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api/v1";
 
@@ -37,7 +38,19 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    // fetch() itself threw — offline, DNS failure, CORS, the backend
+    // host unreachable, etc. Distinct from an HTTP error response
+    // below, and needs its own message: there's no server response to
+    // read a code/message from here.
+    throw new ApiError(
+      "NETWORK_ERROR",
+      "Couldn't reach the server. Check your connection and try again."
+    );
+  }
 
   // Auth routes and challenge routes return the resource directly on
   // success and { success: false, error } on failure — never
@@ -54,6 +67,12 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
       }
     } catch {
       // Response wasn't JSON (e.g. a proxy error page) — keep the default message.
+    }
+    // Only treat this as a *session* expiry if we actually sent a token —
+    // /auth/login returns the same UNAUTHORIZED code for a plain wrong
+    // password, and that's not a session to expire.
+    if (code === "UNAUTHORIZED" && token) {
+      emitSessionExpired();
     }
     throw new ApiError(code, message);
   }
