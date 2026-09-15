@@ -14,11 +14,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <span className="font-semibold text-slate-900">Civic Challenge Platform</span>
-          <div className="flex items-center gap-3 text-sm">
-            {user && <span className="text-slate-600">{user.name}</span>}
-            <button onClick={handleLogout} className="text-slate-500 hover:text-slate-900">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <span className="font-semibold text-slate-900 truncate">Civic Challenge Platform</span>
+          <div className="flex items-center gap-3 text-sm shrink-0">
+            {user && <span className="text-slate-600 hidden sm:inline truncate max-w-[8rem]">{user.name}</span>}
+            <button
+              onClick={handleLogout}
+              className="text-slate-500 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400 rounded"
+            >
               Log out
             </button>
           </div>

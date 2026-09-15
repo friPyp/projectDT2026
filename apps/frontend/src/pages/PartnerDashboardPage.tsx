@@ -64,7 +64,11 @@ function ChallengeCard({ challenge }: { challenge: Challenge }) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
+        <label htmlFor={`team-${challenge.id}`} className="sr-only">
+          Team name for {challenge.title}
+        </label>
         <input
+          id={`team-${challenge.id}`}
           type="text"
           value={teamDraft}
           onChange={(e) => setTeamDraft(e.target.value)}
@@ -74,7 +78,7 @@ function ChallengeCard({ challenge }: { challenge: Challenge }) {
         <button
           onClick={() => teamMutation.mutate(teamDraft)}
           disabled={teamMutation.isPending || !teamDraft.trim()}
-          className="rounded-lg bg-slate-100 text-slate-900 text-sm font-medium px-3 py-1.5 hover:bg-slate-200 disabled:opacity-50"
+          className="rounded-lg bg-slate-100 text-slate-900 text-sm font-medium px-3 py-1.5 hover:bg-slate-200 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400"
         >
           {teamMutation.isPending ? "Saving..." : "Save team"}
         </button>
@@ -83,14 +87,18 @@ function ChallengeCard({ challenge }: { challenge: Challenge }) {
           <button
             onClick={() => statusMutation.mutate(nextStatus)}
             disabled={statusMutation.isPending}
-            className="rounded-lg bg-slate-900 text-white text-sm font-medium px-3 py-1.5 hover:bg-slate-800 disabled:opacity-50"
+            className="rounded-lg bg-slate-900 text-white text-sm font-medium px-3 py-1.5 hover:bg-slate-800 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400"
           >
             {statusMutation.isPending ? "Updating..." : `Move to ${STATUS_LABELS[nextStatus]}`}
           </button>
         )}
       </div>
 
-      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+      {error && (
+        <p role="alert" className="text-xs text-red-600 mt-2">
+          {error}
+        </p>
+      )}
     </li>
   );
 }
@@ -109,10 +117,14 @@ export default function PartnerDashboardPage() {
           <p className="text-sm text-slate-500">Challenges routed to your organization.</p>
         </div>
 
-        {isLoading && <p className="text-sm text-slate-500">Loading...</p>}
+        {isLoading && (
+          <p aria-live="polite" className="text-sm text-slate-500">
+            Loading...
+          </p>
+        )}
 
         {isError && (
-          <p className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-red-600">
             {error instanceof Error ? error.message : "Couldn't load assigned challenges."}
           </p>
         )}

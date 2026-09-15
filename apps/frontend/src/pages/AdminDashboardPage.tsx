@@ -30,10 +30,14 @@ export default function AdminDashboardPage() {
           <p className="text-sm text-slate-500">Aggregate totals across all challenges.</p>
         </div>
 
-        {isLoading && <p className="text-sm text-slate-500">Loading...</p>}
+        {isLoading && (
+          <p aria-live="polite" className="text-sm text-slate-500">
+            Loading...
+          </p>
+        )}
 
         {isError && (
-          <p className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-red-600">
             {error instanceof Error ? error.message : "Couldn't load dashboard totals."}
           </p>
         )}
