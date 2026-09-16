@@ -50,3 +50,12 @@ export const updateStatusSchema = z.object({
 });
 
 export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
+
+// Priority-B: admin manual reassignment (PROJECT_REFERENCE.md §2). ADMIN
+// only, see routes/admin.ts — overrides whatever auto-routing (or a
+// prior reassignment) had set.
+export const reassignChallengeSchema = z.object({
+  partnerId: z.string().trim().min(1, "Choose a partner to reassign to."),
+});
+
+export type ReassignChallengeInput = z.infer<typeof reassignChallengeSchema>;

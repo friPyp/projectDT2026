@@ -210,8 +210,17 @@ PATCH /notifications/:id/read
 
 ### Admin
 ```
-GET /admin/dashboard   -> { totalChallenges, byDomain: {...}, byStatus: {...}, partnersEngaged, completedCount }
+GET   /admin/dashboard                    -> { totalChallenges, byDomain: {...}, byStatus: {...}, partnersEngaged, completedCount }
+GET   /admin/partners                     -> Partner[]                                  (Priority-B addition)
+PATCH /admin/challenges/:id/reassign       body: { partnerId } -> Challenge              (Priority-B addition)
 ```
+`/admin/partners` and the reassign endpoint were added for Priority-B's
+admin manual reassignment (§2) — not in the original session-by-session
+build. Reassigning sets `assignedPartnerId` to the given partner,
+resets `status` to `ASSIGNED`, and clears `team` (the new partner
+starts fresh); it also sends the new partner a `CHALLENGE_ASSIGNED`
+notification (see §9's changelog entry and PROJECT_STATUS.md §7 for the
+call that was made on both of those).
 
 ### Error shape (all endpoints)
 ```json
@@ -238,3 +247,10 @@ assign to a default/general partner if no domain match found)
   reference only, and §2 (not §1's official component list) is the real
   build target. No scope, schema, or contract changed — this only makes
   explicit a distinction the file's own §1/§2 wording already implied.
+- 2026-09-16 — frPyP — Priority-B admin manual reassignment: added
+  `GET /admin/partners` and `PATCH /admin/challenges/:id/reassign` to
+  §8 (new endpoints, nothing existing changed shape). Also completed
+  `GET /challenges`'s ADMIN branch, which §8 already documented
+  ("all for ADMIN") but Session 7 never actually built — see
+  PROJECT_STATUS.md §7 for the two calls made on reassignment's exact
+  behavior (status reset, new-partner notification).

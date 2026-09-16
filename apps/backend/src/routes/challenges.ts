@@ -82,12 +82,22 @@ router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
 // PARTNER, all for ADMIN". CITIZEN branch is Session 3 (unchanged below).
 // PARTNER branch added Session 5: only challenges assigned to *this*
 // logged-in partner (per §7 checklist item 13 — never another partner's).
-// ADMIN's "all" view is still Session 7's dashboard job — not built here,
-// so ADMIN isn't in requireRole below yet.
-router.get("/", requireAuth, requireRole("CITIZEN", "PARTNER"), async (req, res) => {
+// ADMIN's "all" branch: completed as part of Priority-B admin manual
+// reassignment — the admin needs to see every challenge to pick one to
+// reassign, and §8 already documented this exact shape, it just hadn't
+// been written yet (Session 7's dashboard used its own aggregate query
+// instead, which still stands unchanged for GET /admin/dashboard).
+router.get("/", requireAuth, requireRole("CITIZEN", "PARTNER", "ADMIN"), async (req, res) => {
   if (req.user!.role === "CITIZEN") {
     const challenges = await prisma.challenge.findMany({
       where: { citizenId: req.user!.id },
+      orderBy: { createdAt: "desc" },
+    });
+    return res.json(challenges);
+  }
+
+  if (req.user!.role === "ADMIN") {
+    const challenges = await prisma.challenge.findMany({
       orderBy: { createdAt: "desc" },
     });
     return res.json(challenges);
