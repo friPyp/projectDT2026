@@ -1308,6 +1308,26 @@ and the reassign flow from the admin UI end-to-end before calling this
 done. The other two selected Priority-B items (dedup detection, richer
 partner profiles) haven't been started yet.
 
+### Pass 20 — 2026-09-16 — frPyP — admin manual reassignment: live-verified
+Branch/commit: main (no code change, verification only)
+Did: Render and Vercel auto-deployed Pass 19's commits. frPyP submitted
+a test challenge, reassigned it to a different partner from the admin
+UI's new "All challenges" section, and confirmed: the challenge's
+partner and status (`ASSIGNED`, reset correctly) updated, and a
+`CHALLENGE_ASSIGNED` notification row for the new partner's `userId`
+showed up via a direct Neon SQL query. **Admin manual reassignment is
+now closed — written and verified live, same as everything else in
+this project.**
+Files touched: none.
+Decisions made: none.
+Deviations from spec: none.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: nothing.
+Anything the next person picking this up needs to know: test data was
+cleared from the database again after this check (same `DELETE FROM
+notifications; DELETE FROM challenges;` as Pass 18). Remaining
+Priority-B items: dedup detection, richer partner profiles.
+
 ---
 
 ## 1. Current phase
@@ -1346,11 +1366,9 @@ confirmed seeded, full demo story rehearsed live end to end, README +
 architecture diagram added. **All 9 sessions of PROJECT_REFERENCE.md
 §5 are complete — the project is now in Priority-B territory (§2),
 started by explicit request, not assumed.** Of the four Priority-B
-items picked: richer error states is done and verified (Pass 19).
-Admin manual reassignment is written (Pass 19) but **not yet
-live-verified** — needs a real machine for `prisma generate` and an
-end-to-end click-through, same recurring constraint as every DB-facing
-pass. Dedup detection and richer partner profiles haven't been started.
+items picked: **richer error states and admin manual reassignment are
+both done and verified live (Pass 19, verification Pass 20).** Dedup
+detection and richer partner profiles haven't been started.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -1583,12 +1601,11 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-**In progress: admin manual reassignment needs a real-machine
-verification pass** (this sandbox can't run `prisma generate` or
-exercise the live endpoints — see §0 Pass 19 and §6). Richer error
-states is done. Dedup detection and richer partner profiles — the
-other two selected Priority-B items — haven't been started. All 9
-Priority-A sessions remain closed per §1.
+**Nothing is in progress.** Richer error states and admin manual
+reassignment are both done and verified live (Pass 19/20). Dedup
+detection and richer partner profiles — the other two selected
+Priority-B items — haven't been started. All 9 Priority-A sessions
+remain closed per §1.
 
 ---
 
@@ -1694,18 +1711,14 @@ four non-mobile-polish items) — not started on Claude's own
 initiative.**
 
 Status of the four picked items:
-- **Richer error states — done (Pass 19).**
-- **Admin manual reassignment — written (Pass 19), needs a real-machine
-  pass:** run `prisma generate` for `apps/backend` (this sandbox's
-  `binaries.prisma.sh` block prevented it), then `tsc -b`, then
-  exercise `GET /admin/partners` and the reassign button on the admin
-  UI end-to-end. Do this before starting the next item, same
-  one-thing-at-a-time discipline as everything before it.
-- **Dedup detection — not started.** Per the call made when this was
+- **Richer error states — done, verified live (Pass 19).**
+- **Admin manual reassignment — done, verified live (Pass 19,
+  verification Pass 20).**
+- **Dedup detection — next up.** Per the call made when this was
   scoped: on a possible duplicate at submission, show the citizen a
   soft warning (they can still submit) — no design/endpoint work done
   yet beyond that.
-- **Richer partner profiles — not started.** Proposed field set
+- **Richer partner profiles — after that.** Proposed field set
   (`description`, `website`, `contactEmail`, all nullable on `Partner`)
   hasn't been confirmed or built; needs a Prisma migration, so also
   needs a real machine to apply.
