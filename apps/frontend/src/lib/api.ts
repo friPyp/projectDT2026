@@ -220,3 +220,32 @@ export interface AdminDashboard {
 export function getAdminDashboard() {
   return apiFetch<AdminDashboard>("/admin/dashboard");
 }
+
+// ---- Admin manual reassignment (Priority-B) ----
+// GET /challenges already returns "all" for an ADMIN caller — same
+// endpoint citizens/partners use, role-aware server-side (§8). Separate
+// function name here just for readability at the call site, same
+// convention as getAssignedChallenges above.
+export function getAllChallengesForAdmin() {
+  return apiFetch<Challenge[]>("/challenges");
+}
+
+export type PartnerType = "UNIVERSITY" | "INDUSTRY";
+
+export interface Partner {
+  id: string;
+  orgName: string;
+  type: PartnerType;
+  domains: Category[];
+}
+
+export function getPartners() {
+  return apiFetch<Partner[]>("/admin/partners");
+}
+
+export function reassignChallenge(id: string, partnerId: string) {
+  return apiFetch<Challenge>(`/admin/challenges/${id}/reassign`, {
+    method: "PATCH",
+    body: JSON.stringify({ partnerId }),
+  });
+}
