@@ -1258,6 +1258,56 @@ feature-complete per PROJECT_REFERENCE.md §2's Priority-A scope.
 Anything further is a Priority-B item (§2) or a new ask — start a fresh
 pass entry here rather than assuming scope.
 
+### Pass 19 — 2026-09-16 — frPyP — Priority-B: richer error states + admin manual reassignment
+Branch/commit: main (direct push, two commits)
+Did:
+- **Richer error states** (frontend only): `api.ts`'s fetch wrapper now
+  distinguishes a network-level failure (offline, DNS, CORS, host
+  unreachable) from an HTTP error response, with its own message
+  instead of a raw/ugly `fetch()` exception. Added a "Try again" retry
+  button to every failed-query error state (citizen dashboard +
+  notifications, partner dashboard, admin dashboard). An
+  expired/invalid token now auto-clears the session and redirects to
+  `/login` with a "your session expired" message, via a small
+  pub/sub (`lib/authEvents.ts`) so the fetch layer can tell
+  `AuthProvider` to clear state without importing React context into
+  it. Verified with `tsc -b` and `vite build`, both clean.
+- **Admin manual reassignment**: new `GET /admin/partners` and `PATCH
+  /admin/challenges/:id/reassign` endpoints (ADMIN only) — see §7 for
+  the two calls made explicitly on reassignment's behavior (status
+  reset to ASSIGNED + team cleared, new partner notified). Also
+  completed `GET /challenges`'s ADMIN branch, which §8 already
+  documented but Session 7 never built. Admin dashboard UI now has an
+  "All challenges" section listing every challenge with a
+  partner-picker and Reassign button per row.
+Files touched: `apps/frontend/src/lib/{api.ts,auth.tsx,authEvents.ts
+(new)}`, `apps/frontend/src/pages/{LoginPage,DashboardPage,
+PartnerDashboardPage,AdminDashboardPage}.tsx`,
+`apps/backend/src/{routes/admin.ts,routes/challenges.ts,
+validation/challenges.ts,lib/notify.ts}`, `PROJECT_REFERENCE.md` (§8,
+§9).
+Decisions made: see §7 (two, both admin-reassignment).
+Deviations from spec: none beyond what §7 already logs.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: the backend changes are written
+following the exact patterns of the already-verified-live code around
+them (same middleware, same error-response shape, same Prisma query
+style — the Partner model fields used were checked directly against
+`prisma/schema.prisma`), but **could not be run or type-checked against
+a generated Prisma Client in this sandbox** — `prisma generate` fails
+here the same way DB access always has (this time on
+`binaries.prisma.sh`, 403). Frontend half (richer error states, and the
+admin UI calling these new endpoints) is fully verified — `tsc -b` and
+`vite build` both clean. **Needs a real-machine pass before treating
+the two new admin endpoints as live-verified** — same workaround as
+every DB-touching pass before this one (Pass 11, Pass 18).
+Anything the next person picking this up needs to know: run `pnpm
+--filter backend prisma:generate` (or equivalent) and `tsc -b` on a
+real machine for `apps/backend`, then exercise `GET /admin/partners`
+and the reassign flow from the admin UI end-to-end before calling this
+done. The other two selected Priority-B items (dedup detection, richer
+partner profiles) haven't been started yet.
+
 ---
 
 ## 1. Current phase
@@ -1294,7 +1344,13 @@ written and verified live, and Session 9 (deploy) is now also closed
 (Pass 18)** — deployed to Vercel/Render/Neon, production data
 confirmed seeded, full demo story rehearsed live end to end, README +
 architecture diagram added. **All 9 sessions of PROJECT_REFERENCE.md
-§5 are complete.**
+§5 are complete — the project is now in Priority-B territory (§2),
+started by explicit request, not assumed.** Of the four Priority-B
+items picked: richer error states is done and verified (Pass 19).
+Admin manual reassignment is written (Pass 19) but **not yet
+live-verified** — needs a real machine for `prisma generate` and an
+end-to-end click-through, same recurring constraint as every DB-facing
+pass. Dedup detection and richer partner profiles haven't been started.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -1527,10 +1583,12 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-**Nothing is in progress.** All 9 sessions are closed — Session 8
-(polish) Pass 17, Session 9 (deploy) Pass 18. The project is
-feature-complete and demo-ready per PROJECT_REFERENCE.md §2/§5. Next
-work, if any, would be a Priority-B item or a new ask — see §6.
+**In progress: admin manual reassignment needs a real-machine
+verification pass** (this sandbox can't run `prisma generate` or
+exercise the live endpoints — see §0 Pass 19 and §6). Richer error
+states is done. Dedup detection and richer partner profiles — the
+other two selected Priority-B items — haven't been started. All 9
+Priority-A sessions remain closed per §1.
 
 ---
 
@@ -1630,27 +1688,41 @@ work, if any, would be a Priority-B item or a new ask — see §6.
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**All 9 sessions are closed (Pass 18) — the project is feature-complete
-per PROJECT_REFERENCE.md §2/§5, deployed, seeded, and demo-verified
-live end to end.**
+**All 9 Priority-A sessions are closed (Pass 18). The project is now
+working through Priority-B (§2), by explicit request (frPyP picked all
+four non-mobile-polish items) — not started on Claude's own
+initiative.**
 
-There is no next numbered session. Anything further is either:
-- A Priority-B item from PROJECT_REFERENCE.md §2 (admin manual
-  reassignment, dedup detection, richer partner profiles, mobile
-  polish pass, richer error states) — only if explicitly requested.
-- A new ask outside the original scope.
+Status of the four picked items:
+- **Richer error states — done (Pass 19).**
+- **Admin manual reassignment — written (Pass 19), needs a real-machine
+  pass:** run `prisma generate` for `apps/backend` (this sandbox's
+  `binaries.prisma.sh` block prevented it), then `tsc -b`, then
+  exercise `GET /admin/partners` and the reassign button on the admin
+  UI end-to-end. Do this before starting the next item, same
+  one-thing-at-a-time discipline as everything before it.
+- **Dedup detection — not started.** Per the call made when this was
+  scoped: on a possible duplicate at submission, show the citizen a
+  soft warning (they can still submit) — no design/endpoint work done
+  yet beyond that.
+- **Richer partner profiles — not started.** Proposed field set
+  (`description`, `website`, `contactEmail`, all nullable on `Partner`)
+  hasn't been confirmed or built; needs a Prisma migration, so also
+  needs a real machine to apply.
 
-Either way: flag it against PROJECT_REFERENCE.md first if anything
-conflicts, get a yes before adding any new library/tool, and log it as
-its own pass in §0 rather than assuming scope.
+Either way, same rules as always: flag anything against
+PROJECT_REFERENCE.md before proceeding if it conflicts, get a yes
+before adding any new library/tool, and log each item as its own pass
+in §0 rather than assuming scope.
 
 Environment note carried over for whoever picks up DB- or
 deploy-touching work next: sandboxed dev environments (this one
 included) have no network access to Neon's Postgres port, Prisma's
 engine-download host, or Vercel's/Render's deploy APIs. Pass 11
 confirmed the fix is doing that work on a real machine with real
-internet access; Pass 18 confirmed the same holds for verifying a live
-deploy specifically.
+internet access; Pass 18 confirmed the same for a live deploy; Pass 19
+hit the same wall again trying to `prisma generate` for the admin
+reassignment work.
 
 ---
 
@@ -1695,6 +1767,21 @@ deploy specifically.
   devansh4281 as "project director." That was inaccurate — **frPyP is
   the actual project director** (see §1b). Flagging this here for
   clarity rather than rewriting the historical log entry.
+- **Priority-B, richer error states (Pass 19):** an expired/invalid
+  token now force-clears the session and redirects to `/login` with a
+  message, instead of showing a confusing error indefinitely. Frontend
+  only — no backend or contract change.
+- **Priority-B, admin manual reassignment (Pass 19) — two calls made
+  explicitly, not decided silently:** (1) reassigning a challenge to a
+  different partner resets its status to `ASSIGNED` and clears `team`
+  (new partner starts fresh); (2) the new partner now gets a
+  `CHALLENGE_ASSIGNED` notification — the first time `notify()` has
+  ever been called for a partner userId, which is a deliberate,
+  agreed-on exception to the citizen-only note `lib/notify.ts` used to
+  have (see that file's updated comment). The previous partner is not
+  notified — only the new one was ever asked about. Also: `GET
+  /challenges`'s ADMIN branch ("all for ADMIN") was completed as part
+  of this — §8 already documented it, Session 7 just never built it.
 
 ---
 
