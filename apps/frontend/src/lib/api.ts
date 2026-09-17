@@ -147,16 +147,22 @@ export function logout() {
 
 // ---- Challenges (Session 3 scope: citizen create + own list only) ----
 
+// Priority-B: possibleDuplicates is a soft, non-blocking dedup hint —
+// see routes/challenges.ts. Never prevents creation; may be an empty
+// array.
 export function createChallenge(data: {
   title: string;
   description: string;
   category: Category;
   district: string;
 }) {
-  return apiFetch<Challenge>("/challenges", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+  return apiFetch<Challenge & { possibleDuplicates: { id: string; title: string }[] }>(
+    "/challenges",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
 }
 
 export function getMyChallenges() {

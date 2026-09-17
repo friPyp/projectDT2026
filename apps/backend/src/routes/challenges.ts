@@ -10,6 +10,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { categorize } from "../lib/categorize";
 import { routeToPartner } from "../lib/routing";
 import { notify } from "../lib/notify";
+import { findPossibleDuplicates } from "../lib/dedup";
 
 // Session 5 helper: PARTNER role's `req.user.id` is the *user* id, but
 // challenges are linked via `assignedPartnerId` (the Partner row's id,
@@ -39,12 +40,21 @@ const router = Router();
 // challenge is auto-routed to a matching seeded partner and created
 // straight into ASSIGNED status. (Sessions 1-3 deliberately left this out
 // of scope — see PROJECT_STATUS.md Pass 8 — this is where it belongs.)
+// Priority-B addition: also runs a soft dedup check (lib/dedup.ts) and
+// attaches `possibleDuplicates` to the response — never blocks creation.
 router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
   const parsed = createChallengeSchema.safeParse(req.body);
   if (!parsed.success) {
     return sendError(res, 400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid input.");
   }
   const { title, description, category, district } = parsed.data;
+
+  // Priority-B: dedup detection, checked *before* creating so the new
+  // challenge never matches against itself. Per the call made when
+  // this was scoped, this never blocks the submission — it's attached
+  // to the response so the frontend can show a soft, dismissible
+  // warning, nothing more.
+  const possibleDuplicates = await findPossibleDuplicates(district, title, description);
 
   const finalCategory = categorize(title, description, category);
   const assignedPartnerId = await routeToPartner(finalCategory);
@@ -75,7 +85,7 @@ router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
     );
   }
 
-  res.status(201).json(challenge);
+  res.status(201).json({ ...challenge, possibleDuplicates });
 });
 
 // GET /challenges — §8 says this returns "own for CITIZEN, assigned for

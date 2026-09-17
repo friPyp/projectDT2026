@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createChallenge, ApiError } from "../lib/api";
@@ -18,6 +18,11 @@ export default function SubmitChallengePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
+  // Priority-B dedup detection: if the create response flags similar
+  // existing challenges, we hold here and show a soft warning instead
+  // of auto-navigating — the challenge is already submitted either
+  // way, this is purely informational (see lib/dedup.ts).
+  const [possibleDuplicates, setPossibleDuplicates] = useState<{ id: string; title: string }[]>([]);
 
   const {
     register,
@@ -33,9 +38,15 @@ export default function SubmitChallengePage() {
   const mutation = useMutation({
     mutationFn: (values: SubmitFormValues) =>
       createChallenge({ ...values, category: values.category as Category }),
-    onSuccess: () => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["myChallenges"] });
-      navigate("/dashboard");
+      if (created.possibleDuplicates.length > 0) {
+        // Submitted either way — just don't whisk them away before
+        // they've seen the heads-up.
+        setPossibleDuplicates(created.possibleDuplicates);
+      } else {
+        navigate("/dashboard");
+      }
     },
     onError: (err) => {
       setServerError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
@@ -50,6 +61,38 @@ export default function SubmitChallengePage() {
     setServerError(null);
     mutation.mutate(values);
   };
+
+  // Priority-B: the challenge is already submitted by this point either
+  // way — this replaces the form with a soft, dismissible heads-up
+  // rather than blocking or reversing anything.
+  if (possibleDuplicates.length > 0) {
+    return (
+      <AppLayout>
+        <div className="max-w-xl mx-auto">
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <h1 className="text-lg font-semibold text-slate-900 mb-3">Challenge submitted</h1>
+            <p role="status" className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+              Heads up — this looks similar to something already reported in your district:
+            </p>
+            <ul className="text-sm text-slate-700 space-y-1 mb-4 list-disc list-inside">
+              {possibleDuplicates.map((d) => (
+                <li key={d.id}>{d.title}</li>
+              ))}
+            </ul>
+            <p className="text-sm text-slate-500 mb-5">
+              Your submission went through regardless — this is just in case it's already being worked on.
+            </p>
+            <Link
+              to="/dashboard"
+              className="inline-block rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400"
+            >
+              Go to my dashboard
+            </Link>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

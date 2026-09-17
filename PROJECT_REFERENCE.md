@@ -195,7 +195,7 @@ POST /auth/logout
 
 ### Challenges
 ```
-POST /challenges                body: { title, description, category, district } -> Challenge (auto-routed on creation)
+POST /challenges                body: { title, description, category, district } -> Challenge & { possibleDuplicates: {id,title}[] } (auto-routed on creation; possibleDuplicates is a Priority-B addition — see below, always present, empty array if none found, never blocks creation)
 GET  /challenges                -> Challenge[]  (own for CITIZEN, assigned for PARTNER, all for ADMIN)
 GET  /challenges/:id            -> Challenge
 PATCH /challenges/:id/team      body: { team }                (PARTNER only)
@@ -254,3 +254,10 @@ assign to a default/general partner if no domain match found)
   ("all for ADMIN") but Session 7 never actually built — see
   PROJECT_STATUS.md §7 for the two calls made on reassignment's exact
   behavior (status reset, new-partner notification).
+- 2026-09-16 — frPyP — Priority-B dedup detection: `POST /challenges`
+  now always returns a `possibleDuplicates` array alongside the created
+  Challenge (empty if none found) — plain word-overlap against other
+  challenges in the same district, see `lib/dedup.ts`. Additive only;
+  the existing `Challenge` fields in the response are unchanged, and
+  nothing about creation itself changed — duplicates are never blocked,
+  per the call made when this was scoped (PROJECT_STATUS.md §7).
