@@ -1328,6 +1328,40 @@ cleared from the database again after this check (same `DELETE FROM
 notifications; DELETE FROM challenges;` as Pass 18). Remaining
 Priority-B items: dedup detection, richer partner profiles.
 
+### Pass 21 — 2026-09-16 — frPyP — Priority-B: dedup detection
+Branch/commit: main (direct push)
+Did: `POST /challenges` now runs a soft duplicate check
+(`lib/dedup.ts`, new file) before creating — plain word-overlap
+against other challenges in the same district — and always returns
+`possibleDuplicates` (empty array if none) alongside the created
+Challenge; never blocks creation, per §7. Frontend: submit page shows
+a dismissible "this looks similar to..." notice with the matched
+titles and a link to the dashboard instead of auto-navigating, only
+when the array is non-empty; unchanged (auto-navigate) otherwise.
+Files touched: `apps/backend/src/lib/dedup.ts` (new),
+`apps/backend/src/routes/challenges.ts`,
+`apps/frontend/src/lib/api.ts`,
+`apps/frontend/src/pages/SubmitChallengePage.tsx`,
+`PROJECT_REFERENCE.md` (§8, §9).
+Decisions made: see §7.
+Deviations from spec: none beyond what §7 logs.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: same sandbox limitation as every
+backend change this project has made — `tsc -b` for `apps/backend`
+shows only the pre-existing "Prisma client not generated" errors
+(same 7 as before this pass, none new), and `dedup.ts` itself needed
+explicit types added precisely because of that missing client, so
+worth double-checking on a real machine with the client generated.
+Frontend half is fully verified — `tsc -b` and `vite build` both
+clean. **Not yet live-verified** — needs a real machine, same as
+admin manual reassignment before it (Pass 19 → Pass 20).
+Anything the next person picking this up needs to know: to test,
+submit two similar challenges in the same district (e.g. same
+pothole reported twice with different wording) and confirm the second
+one's submit page shows the heads-up with the first one's title.
+Richer partner profiles is the last selected Priority-B item, not
+started yet.
+
 ---
 
 ## 1. Current phase
@@ -1367,8 +1401,10 @@ architecture diagram added. **All 9 sessions of PROJECT_REFERENCE.md
 §5 are complete — the project is now in Priority-B territory (§2),
 started by explicit request, not assumed.** Of the four Priority-B
 items picked: **richer error states and admin manual reassignment are
-both done and verified live (Pass 19, verification Pass 20).** Dedup
-detection and richer partner profiles haven't been started.
+both done and verified live (Pass 19, verification Pass 20). Dedup
+detection is written (Pass 21) but not yet live-verified** — needs a
+real machine, same as reassignment before it. Richer partner profiles
+hasn't been started.
 
 ## 1a. Who owns what (fill in once assigned)
 
@@ -1601,11 +1637,12 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-**Nothing is in progress.** Richer error states and admin manual
-reassignment are both done and verified live (Pass 19/20). Dedup
-detection and richer partner profiles — the other two selected
-Priority-B items — haven't been started. All 9 Priority-A sessions
-remain closed per §1.
+**In progress: dedup detection needs a real-machine verification pass**
+(same reason as every backend change — this sandbox can't generate a
+real Prisma Client or hit the live Neon/Render/Vercel stack; see §0
+Pass 21 and §6). Richer error states and admin manual reassignment are
+both done and verified live. Richer partner profiles — the last
+selected Priority-B item — hasn't been started.
 
 ---
 
@@ -1714,11 +1751,12 @@ Status of the four picked items:
 - **Richer error states — done, verified live (Pass 19).**
 - **Admin manual reassignment — done, verified live (Pass 19,
   verification Pass 20).**
-- **Dedup detection — next up.** Per the call made when this was
-  scoped: on a possible duplicate at submission, show the citizen a
-  soft warning (they can still submit) — no design/endpoint work done
-  yet beyond that.
-- **Richer partner profiles — after that.** Proposed field set
+- **Dedup detection — written (Pass 21), needs a real-machine pass:**
+  run `prisma generate` + `tsc -b` for `apps/backend`, then submit two
+  similar test challenges in the same district and confirm the second
+  one's submit page shows a heads-up naming the first. Do this before
+  starting the last item.
+- **Richer partner profiles — last one.** Proposed field set
   (`description`, `website`, `contactEmail`, all nullable on `Partner`)
   hasn't been confirmed or built; needs a Prisma migration, so also
   needs a real machine to apply.
@@ -1795,6 +1833,15 @@ reassignment work.
   notified — only the new one was ever asked about. Also: `GET
   /challenges`'s ADMIN branch ("all for ADMIN") was completed as part
   of this — §8 already documented it, Session 7 just never built it.
+- **Priority-B, dedup detection (Pass 21):** duplicate check is plain
+  word-overlap (Jaccard similarity on significant words) against other
+  challenges in the same district — same no-ML philosophy as
+  `lib/categorize.ts`, not a real similarity model or external API.
+  Per the call made when this was scoped, it never blocks a
+  submission: `POST /challenges` always creates the challenge and just
+  attaches `possibleDuplicates` (empty if none) to that one response.
+  The field isn't stored on the `Challenge` model — computed fresh each
+  time, not persisted.
 
 ---
 
