@@ -10,6 +10,15 @@
 > right after updating this file. If two people worked at the same time, the
 > git conflict on THIS file is a feature — it's how you notice it happened.
 
+> ⚠️ **HANDOFF NOTE — 2026-09-16, frPyP:** new urgent requirements have
+> come in from outside this chat that will need rearchitecting parts of
+> this project. The details were **not** given to the chat session that
+> wrote this file — get them from frPyP directly before resuming any
+> Priority-B work below, and don't assume the current schema/API
+> contract/architecture is still the target until that's confirmed.
+> Everything in this file reflects state as of Pass 21, working tree
+> clean, nothing uncommitted, written *before* this news arrived.
+
 ---
 
 ## 0. Session log (append one entry per pass — never delete old entries)
@@ -1362,6 +1371,32 @@ one's submit page shows the heads-up with the first one's title.
 Richer partner profiles is the last selected Priority-B item, not
 started yet.
 
+### Pass 22 — 2026-09-16 — frPyP — HANDOFF: pausing for incoming new/urgent requirements
+Branch/commit: main (no code change — repo confirmed clean and pushed
+as of Pass 21 before this pass)
+Did: frPyP flagged that new urgent requirements are coming in from
+outside this chat, expected to need rearchitecting parts of this
+project, and asked for the repo to be left in a clean, fully-documented
+state for a fresh chat session to pick up. Confirmed `git status` was
+already clean with nothing uncommitted, and added the HANDOFF NOTE at
+the top of this file. No requirement details were given to this
+session — deliberately not guessed at or built against.
+Files touched: `PROJECT_STATUS.md` only (this entry + the top-of-file
+note + a pointer in §4).
+Decisions made: none.
+Deviations from spec: none.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: nothing code-wise. Priority-B is
+paused, not abandoned — dedup detection (Pass 21) still needs its
+real-machine verification pass, and richer partner profiles is still
+unstarted, exactly as Pass 21 left them. See §1/§4/§6 for the current
+snapshot of that, and the top-of-file HANDOFF NOTE before doing
+anything with it.
+Anything the next person picking this up needs to know: **get the new
+requirements from frPyP before resuming §6 below or assuming the
+existing schema/contract/architecture holds** — that's the entire
+point of this pass.
+
 ---
 
 ## 1. Current phase
@@ -1637,12 +1672,16 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
+**See the HANDOFF NOTE at the top of this file first** — new
+requirements are coming that may supersede the Priority-B work below.
+
 **In progress: dedup detection needs a real-machine verification pass**
 (same reason as every backend change — this sandbox can't generate a
 real Prisma Client or hit the live Neon/Render/Vercel stack; see §0
 Pass 21 and §6). Richer error states and admin manual reassignment are
 both done and verified live. Richer partner profiles — the last
-selected Priority-B item — hasn't been started.
+selected Priority-B item — hasn't been started, and per the handoff
+note above, shouldn't be assumed to still be the plan.
 
 ---
 
