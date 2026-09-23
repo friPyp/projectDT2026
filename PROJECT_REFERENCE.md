@@ -52,6 +52,16 @@ done — everything else is optional polish.
 
 ## 2. What we're actually building (pruned scope)
 
+> **2026-09-23 — Phase 2 scope, requested by frPyP after the Pass 22
+> handoff pause.** All 9 Priority-A sessions + the picked Priority-B
+> items below are done (see PROJECT_STATUS.md §0/§1). New requirements
+> came in that **do rearchitect part of the core design** — frPyP
+> explicitly confirmed: where these conflict with the "non-negotiable"
+> items below, the new version wins. See §5a for the new session
+> breakdown and §6a/§8a for the schema/contract deltas. This note and
+> §5a/§6a/§8a are the source of truth going forward; the original text
+> below is kept for history, not overridden silently.
+
 **Build (non-negotiable, Priority A):**
 - Citizen registration/login. Partner and admin accounts are **seeded**, not
   self-registered.
@@ -137,6 +147,40 @@ dependency, not just "pick any open session."
 
 ---
 
+## 5a. Phase 2 — new sessions (requested 2026-09-23, post Pass-22 handoff)
+
+Picked up after all Priority-A/B work above. One session at a time,
+same discipline as §5 — don't start the next until the current one's
+logged done in PROJECT_STATUS.md.
+
+| # | Session | What | Decision made |
+|---|---|---|---|
+| 10 | SPA routing fix | Hard refresh / direct URL hit on any frontend route was returning "page not found" — Vercel was serving the static build with no fallback to `index.html`, so React Router never got a chance to handle the route client-side. Fixed with `apps/frontend/vercel.json` rewrite. | No schema/contract impact. |
+| 11 | Extra location fields | `state`, `city`, `locality` (all nullable text) + optional plain-text `address` added to `challenges`, citizen-fillable at submission (and on edit, see Session 13). | Plain text only — §2's "no maps/GPS/geolocation" ban still holds, this is not a map picker. |
+| 12 | Partner contact channels | Partners declare one or more contact channels (e.g. phone, email, office address — free text per channel, partner's choice which ones); citizens can always see and use these to reach the partner assigned to their challenge directly. Answers frPyP's "direct connection to concerned authorities" ask. | New `PartnerContact` table (see §6a) rather than fixed columns on `partners`, since a partner may have 1+ channels of mixed types. |
+| 13 | Citizen challenge editing | Citizen can edit their own challenge's title/description/category/location fields after submission, to add updates (e.g. new developments since filing). Implemented as in-place edit + an append-only `ChallengeEditLog` (see §6a) so partners/admin can see what changed and when, rather than silently overwriting history. Editing is blocked once a challenge is `COMPLETED`. Re-running categorization/routing on edit is explicitly **not** done — an edit does not reassign or re-route; that would undermine the partner's existing work on it. | Claude's call, per frPyP ("do what you feel would be best"). |
+| 14 | Transparency / status updates log | New `ChallengeUpdate` entity (see §6a): partners can post short status notes against a challenge (visible to the citizen and admin), separate from the coarse `status` enum. Citizen dashboard shows these as a timeline under each challenge. | New table + new endpoints, additive — doesn't change existing `status` transition logic. |
+| 15 | Multi-partner / multi-domain assignment | The core rearchitect: a challenge can be routed to **more than one** partner when it spans multiple domains, instead of the single `assignedPartnerId` model. Citizens get a corresponding option at submission (pick more than one relevant domain, or let auto-categorization suggest multiple). Partners assigned to the same multi-domain challenge get a shared coordination view (see §6a `ChallengeAssignment`). This replaces §6's single `assignedPartnerId` field — confirmed by frPyP as an explicit, intentional break from the original "auto-routing to one partner" design. | frPyP: "wherever it conflicts with the core design, this must be adopted as the new version." |
+| 16 | UI/accessibility pass | Visual redesign — less plain, fuller layout, more accessible. No functional/data changes. Claude's call on direction (frPyP: "purely your call"), logged with reasoning when done rather than guessed at silently. | Claude's call. |
+
+Sessions 11–15 all touch schema — every one of them needs a real
+`prisma migrate` + live-DB verification pass on a real machine, same
+constraint documented throughout PROJECT_STATUS.md §5/§6/§0 since
+Pass 1. Session 15 (multi-partner) is the biggest and should be done
+last, once 11–14 are verified live and stable, since it touches
+routing, partner dashboard, and notifications that are otherwise
+untouched Priority-A code.
+
+**Distinguishing the project itself (frPyP's ask, "vs Jio MyGate/apartment
+apps"):** not a coded feature — noted here as context for future UI/copy
+work. The structural difference already exists: this routes citizen-
+reported issues to university/industry partners at a district/state
+government scale, not building/society management. Sessions 14
+(transparency) and 15 (multi-domain routing) are the two Phase 2 items
+that most reinforce that distinction in practice.
+
+---
+
 ## 6. Database schema (source of truth = `prisma/schema.prisma` once written)
 
 Tables: `users`, `partners`, `challenges`, `notifications`
@@ -160,6 +204,33 @@ ENVIRONMENT | ENERGY | URBAN_DEVELOPMENT | PUBLIC_ADMIN`
 
 **notifications:** id, userId, title, message, type, read, createdAt
 Type: `CHALLENGE_ASSIGNED | STATUS_UPDATED`
+
+---
+
+## 6a. Phase 2 schema deltas (source of truth = `prisma/schema.prisma` once each session lands)
+
+**challenges** — add: `state` (nullable String), `city` (nullable
+String), `locality` (nullable String), `address` (nullable String, free
+text). `assignedPartnerId` (single FK) is **replaced** by the
+`ChallengeAssignment` join table below once Session 15 lands — kept
+until then so Sessions 11–14 don't have to wait on the big rearchitect.
+
+**ChallengeAssignment** (new, Session 15): id, challengeId, partnerId,
+assignedAt. One row per partner assigned to a challenge — a
+single-domain challenge just gets one row, replicating today's
+behavior exactly.
+
+**PartnerContact** (new, Session 12): id, partnerId, label (e.g.
+"Phone", "Email", "Office"; partner's own free text, not a fixed enum),
+value (free text — the actual number/address/email), createdAt.
+
+**ChallengeEditLog** (new, Session 13): id, challengeId, editedAt,
+changedFields (JSON — before/after per field touched). Append-only,
+never edited or deleted.
+
+**ChallengeUpdate** (new, Session 14): id, challengeId, partnerId,
+note (text), createdAt. Partner-authored, citizen/admin-visible,
+append-only.
 
 ---
 
@@ -235,6 +306,34 @@ assign to a default/general partner if no domain match found)
 
 ---
 
+## 8a. Phase 2 API contract deltas (append as each session lands)
+
+```
+POST /challenges   body now also accepts optional { state, city, locality, address }
+                    and optional { domains: string[] } (Session 15 — plural,
+                    replaces single implicit category-routing once live;
+                    until Session 15 lands, single-category behavior is
+                    unchanged)
+PATCH /challenges/:id           body: any of { title, description, category,
+                    domains, state, city, locality, address } -> Challenge
+                    (CITIZEN only, own challenge, blocked once COMPLETED —
+                    Session 13)
+
+GET  /partners/:id/contacts     -> PartnerContact[]   (Session 12, public
+                    to any authenticated user who can see that challenge)
+POST /partners/me/contacts      body: { label, value } -> PartnerContact
+                    (PARTNER only, own record — Session 12)
+
+GET  /challenges/:id/updates    -> ChallengeUpdate[]   (Session 14)
+POST /challenges/:id/updates    body: { note } -> ChallengeUpdate
+                    (PARTNER only, must be assigned to that challenge)
+```
+Session 15's exact reassignment/multi-assign endpoint shapes to be
+appended here once that session starts — not fully speced yet, since
+11–14 land first.
+
+---
+
 ## 9. Change log for this file (append, never silently edit sections above without a note here)
 
 - 2026-09-10 — §6 updated to document the nullable `district` field on
@@ -261,3 +360,12 @@ assign to a default/general partner if no domain match found)
   the existing `Challenge` fields in the response are unchanged, and
   nothing about creation itself changed — duplicates are never blocked,
   per the call made when this was scoped (PROJECT_STATUS.md §7).
+- 2026-09-23 — frPyP (via chat) — Phase 2 kickoff, resolving the Pass
+  22 handoff note. Added §5a (six new sessions), §6a (schema deltas),
+  §8a (API contract deltas), and a note at the top of §2 confirming
+  that where new requirements conflict with the original "non-
+  negotiable" design (specifically: single-partner auto-routing),
+  the new version wins — explicit call, not silently decided. Two
+  items (citizen editing's exact mechanics, and UI direction) were
+  explicitly left to Claude's judgment by frPyP; reasoning for both
+  logged in §5a.
