@@ -80,6 +80,12 @@ model Challenge {
   description       String
   category          Category
   district          String
+  // Phase 2 Session 11: optional plain-text location detail, beyond
+  // district. Text only — no maps/GPS (PROJECT_REFERENCE.md §2 ban stands).
+  state             String?
+  city              String?
+  locality          String?
+  address           String?
   status            ChallengeStatus @default(SUBMITTED)
   assignedPartnerId String?
   assignedPartner   Partner?        @relation("PartnerChallenges", fields: [assignedPartnerId], references: [id])
