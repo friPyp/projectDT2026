@@ -10,16 +10,24 @@
 > right after updating this file. If two people worked at the same time, the
 > git conflict on THIS file is a feature — it's how you notice it happened.
 
+> ⚠️ **HANDOFF NOTE — 2026-09-16, frPyP:** new urgent requirements have
+> come in from outside this chat that will need rearchitecting parts of
+> this project. The details were **not** given to the chat session that
+> wrote this file — get them from frPyP directly before resuming any
+> Priority-B work below, and don't assume the current schema/API
+> contract/architecture is still the target until that's confirmed.
+> Everything in this file reflects state as of Pass 21, working tree
+> clean, nothing uncommitted, written *before* this news arrived.
+
 > ✅ **HANDOFF NOTE RESOLVED — 2026-09-23:** the new requirements
-> referenced in the 2026-09-16 note below were given directly by frPyP
-> in chat on 2026-09-23. They're now locked into
-> `PROJECT_REFERENCE.md` §5a/§6a/§8a as **Phase 2, Sessions 10–16**.
-> Old Priority-B item "richer partner profiles" is effectively
-> superseded/expanded by Phase 2 Session 12 (partner contact
-> channels) — treat that as its replacement, not a separate
-> remaining item. Dedup detection (old Priority-B) still just needs
-> its real-machine verification pass whenever someone's next on a
-> real machine — unaffected by Phase 2.
+> referenced in the note above were given directly by frPyP in chat on
+> 2026-09-23. They're now locked into `PROJECT_REFERENCE.md`
+> §5a/§6a/§8a as **Phase 2, Sessions 10–16**. Old Priority-B item
+> "richer partner profiles" is effectively superseded/expanded by
+> Phase 2 Session 12 (partner contact channels) — treat that as its
+> replacement, not a separate remaining item. Dedup detection (old
+> Priority-B) still just needs its real-machine verification pass
+> whenever someone's next on a real machine — unaffected by Phase 2.
 
 ---
 
@@ -1475,6 +1483,36 @@ before calling Session 10 closed. Session 11 (extra location fields)
 is next; see REFERENCE §5a/§6a — that one needs a real Prisma migrate
 against Neon, same constraint as every schema-touching pass before it.
 
+### Pass 25 — 2026-09-23 — frPyP (via chat) — Correction: Pass 23/24's rewrite of this file deleted historical text instead of appending
+Branch/commit: main (direct push)
+Did: frPyP flagged that this file must never have content deleted,
+only appended — and Pass 23/24's edits to the top handoff note, §4,
+and §6 had replaced the original text outright instead of adding
+alongside it. Confirmed this was true (diffed against the pre-Pass-23
+version) and restored all three: the original 2026-09-16 handoff note
+text, the original §4 "in progress" text (including the exact old
+dedup/richer-error-states/reassignment status wording), and the
+original §6 next-task text (including the specific proposed
+`Partner` field set — `description`, `website`, `contactEmail` — that
+had been dropped). The Phase 2 updates from Pass 23/24 are kept too,
+now appended after the restored originals rather than in place of
+them.
+Files touched: `PROJECT_STATUS.md` only.
+Decisions made: none — this is a correction of a process mistake, not
+a design choice.
+Deviations from spec: this pass's own existence is the fix for a
+deviation (deleting instead of appending) — flagged and corrected
+per frPyP's instruction, not decided silently.
+Bugs found/fixed: fixed — see above.
+Left in a broken/incomplete state: nothing. No app code touched.
+Anything the next person picking this up needs to know: going
+forward, edits to this file's "current state" sections (§1, §4, §6)
+should add a dated update block rather than overwrite the existing
+text, exactly like this pass and Pass 23/24's update blocks do —
+even though the file's own top-of-file note describes itself as
+"rewritten in full" each pass, frPyP's standing instruction is
+stricter: nothing in this file is ever deleted, only appended to.
+
 ---
 
 ## 1. Current phase (Phase 2 status — read this first)
@@ -1761,14 +1799,27 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-**Phase 2, Session 10 (SPA routing fix) — written, needs live
-verification** (`pnpm build` + a real deploy/refresh check; blocked
-here by the pnpm 10+ build-approval gate, see Pass 24). **Session 11
-(location fields) is next, not yet started.**
+**See the HANDOFF NOTE at the top of this file first** — new
+requirements are coming that may supersede the Priority-B work below.
+(Resolved 2026-09-23 — see the ✅ note at the top and the Phase 2
+update just below.)
 
-Carried over, unaffected by Phase 2: dedup detection (old Priority-B)
-still needs its real-machine verification pass (Pass 21/§0). Richer
-error states and admin manual reassignment are done and verified live.
+**In progress: dedup detection needs a real-machine verification pass**
+(same reason as every backend change — this sandbox can't generate a
+real Prisma Client or hit the live Neon/Render/Vercel stack; see §0
+Pass 21 and §6). Richer error states and admin manual reassignment are
+both done and verified live. Richer partner profiles — the last
+selected Priority-B item — hasn't been started, and per the handoff
+note above, shouldn't be assumed to still be the plan.
+
+**Update, 2026-09-23 (Phase 2, Pass 23/24):** the requirements the
+handoff note above was waiting on have arrived — see
+`PROJECT_REFERENCE.md` §5a. "Richer partner profiles" above is now
+superseded by Phase 2 Session 12. **Phase 2 Session 10 (SPA routing
+fix) is written, needs live verification** (`pnpm build` + a real
+deploy/refresh check; blocked here by the pnpm 10+ build-approval
+gate, see Pass 24). **Session 11 (location fields) is next, not yet
+started.**
 
 ---
 
@@ -1868,7 +1919,40 @@ error states and admin manual reassignment are done and verified live.
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**Phase 2 is in progress (see §1, REFERENCE §5a). Next concrete steps:**
+**All 9 Priority-A sessions are closed (Pass 18). The project is now
+working through Priority-B (§2), by explicit request (frPyP picked all
+four non-mobile-polish items) — not started on Claude's own
+initiative.**
+
+Status of the four picked items:
+- **Richer error states — done, verified live (Pass 19).**
+- **Admin manual reassignment — done, verified live (Pass 19,
+  verification Pass 20).**
+- **Dedup detection — written (Pass 21), needs a real-machine pass:**
+  run `prisma generate` + `tsc -b` for `apps/backend`, then submit two
+  similar test challenges in the same district and confirm the second
+  one's submit page shows a heads-up naming the first. Do this before
+  starting the last item.
+- **Richer partner profiles — last one.** Proposed field set
+  (`description`, `website`, `contactEmail`, all nullable on `Partner`)
+  hasn't been confirmed or built; needs a Prisma migration, so also
+  needs a real machine to apply.
+
+Either way, same rules as always: flag anything against
+PROJECT_REFERENCE.md before proceeding if it conflicts, get a yes
+before adding any new library/tool, and log each item as its own pass
+in §0 rather than assuming scope.
+
+**Update, 2026-09-23 (Phase 2, Pass 23/24):** the above is now
+superseded/absorbed as follows — "richer partner profiles" (proposed
+field set above) is replaced by Phase 2 Session 12's `PartnerContact`
+table design in `PROJECT_REFERENCE.md` §6a (frPyP clarified the actual
+need as partner-declared contact channels, not just profile-text
+fields). Dedup detection's real-machine verification is still
+outstanding, unaffected by Phase 2. Richer error states and admin
+reassignment remain done.
+
+**Phase 2 next concrete steps (see §1, REFERENCE §5a):**
 
 1. **Live-verify Session 10** (SPA routing fix, Pass 24): on a real
    machine, `pnpm install` (approve esbuild's build script when
@@ -1891,16 +1975,6 @@ error states and admin manual reassignment are done and verified live.
    Priority-A code (routing, partner dashboard, notifications).
 5. Session 16 (UI/accessibility pass) can happen any time relative to
    11–15 — it's presentation-only, no schema/data dependency.
-
-Carried over from old Priority-B, unaffected by Phase 2: dedup
-detection (Pass 21) still needs its real-machine verification —
-submit two similar test challenges in the same district and confirm
-the second one's submit page shows a heads-up naming the first.
-
-Same rules as always: flag anything against PROJECT_REFERENCE.md
-before proceeding if it conflicts, get a yes before adding any new
-library/tool, and log each item as its own pass in §0 rather than
-assuming scope.
 
 Environment note carried over for whoever picks up DB- or
 deploy-touching work next: sandboxed dev environments (this one
