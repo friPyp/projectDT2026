@@ -1993,6 +1993,13 @@ reassignment remain done.
 5. Session 16 (UI/accessibility pass) can happen any time relative to
    11–15 — it's presentation-only, no schema/data dependency.
 
+**Update, 2026-09-23:** Sessions 17 (public accountability dashboard)
+and 18 (co-signing/"me too" on existing issues) added to the roadmap
+— see REFERENCE §5a/§6a/§8a. 17 depends on Session 14's data; 18
+depends on dedup detection (old Priority-B) being live-verified.
+Neither changes the order of 1–5 above; they slot in after Session 15
+per REFERENCE §5a's dependency notes.
+
 Environment note carried over for whoever picks up DB- or
 deploy-touching work next: sandboxed dev environments (this one
 included) have no network access to Neon's Postgres port, Prisma's
