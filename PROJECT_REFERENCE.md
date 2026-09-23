@@ -162,6 +162,8 @@ logged done in PROJECT_STATUS.md.
 | 14 | Transparency / status updates log | New `ChallengeUpdate` entity (see §6a): partners can post short status notes against a challenge (visible to the citizen and admin), separate from the coarse `status` enum. Citizen dashboard shows these as a timeline under each challenge. | New table + new endpoints, additive — doesn't change existing `status` transition logic. |
 | 15 | Multi-partner / multi-domain assignment | The core rearchitect: a challenge can be routed to **more than one** partner when it spans multiple domains, instead of the single `assignedPartnerId` model. Citizens get a corresponding option at submission (pick more than one relevant domain, or let auto-categorization suggest multiple). Partners assigned to the same multi-domain challenge get a shared coordination view (see §6a `ChallengeAssignment`). This replaces §6's single `assignedPartnerId` field — confirmed by frPyP as an explicit, intentional break from the original "auto-routing to one partner" design. | frPyP: "wherever it conflicts with the core design, this must be adopted as the new version." |
 | 16 | UI/accessibility pass | Visual redesign — less plain, fuller layout, more accessible. No functional/data changes. Claude's call on direction (frPyP: "purely your call"), logged with reasoning when done rather than guessed at silently. | Claude's call. |
+| 17 | Public accountability dashboard | New, unauthenticated public page: aggregate stats per district/domain — issues resolved this period, average resolution time, partner performance — no individual citizen data. Turns Session 14's transparency data into something the public/officials can see, not just the filer. Added at frPyP's request after Claude proposed it as a way to actually deliver on "distinguish from MyGate," rather than leaving that as an unimplemented note (see the paragraph below). | Claude's proposal, frPyP confirmed adding it (2026-09-23). |
+| 18 | Co-signing ("me too") on existing issues | Instead of dedup detection only warning/blocking a near-duplicate submission, let a citizen co-sign an existing open issue near them instead of filing a new one. Issues with more co-signers surface higher for the assigned partner(s) — a real prioritization signal, not just a duplicate filter. Depends on dedup detection (old Priority-B, Pass 21) already being live-verified, since this builds directly on that matching logic. | Claude's proposal, frPyP confirmed adding it (2026-09-23). |
 
 Sessions 11–15 all touch schema — every one of them needs a real
 `prisma migrate` + live-DB verification pass on a real machine, same
@@ -169,15 +171,23 @@ constraint documented throughout PROJECT_STATUS.md §5/§6/§0 since
 Pass 1. Session 15 (multi-partner) is the biggest and should be done
 last, once 11–14 are verified live and stable, since it touches
 routing, partner dashboard, and notifications that are otherwise
-untouched Priority-A code.
+untouched Priority-A code. Sessions 17 and 18 also touch schema (new
+tables, see §6a) — 17 depends on Session 14's data existing, 18
+depends on dedup detection (old Priority-B) being live-verified.
 
 **Distinguishing the project itself (frPyP's ask, "vs Jio MyGate/apartment
-apps"):** not a coded feature — noted here as context for future UI/copy
-work. The structural difference already exists: this routes citizen-
+apps"):** originally left as pure context/rationale rather than a coded
+feature — the structural difference already exists: this routes citizen-
 reported issues to university/industry partners at a district/state
 government scale, not building/society management. Sessions 14
 (transparency) and 15 (multi-domain routing) are the two Phase 2 items
-that most reinforce that distinction in practice.
+that most reinforce that distinction in practice. **Update, 2026-09-23:**
+frPyP pushed back on leaving this as just a structural side-effect, so
+Claude proposed three concrete features and frPyP picked two to actually
+build — Sessions 17 (public accountability dashboard) and 18
+(co-signing/"me too" on existing issues) above. A third idea (SLA-based
+auto-escalation on unactioned issues) was proposed but not picked; not
+added to the roadmap.
 
 ---
 
@@ -231,6 +241,17 @@ never edited or deleted.
 **ChallengeUpdate** (new, Session 14): id, challengeId, partnerId,
 note (text), createdAt. Partner-authored, citizen/admin-visible,
 append-only.
+
+**ChallengeCosign** (new, Session 18): id, challengeId, citizenId,
+createdAt. Unique on (challengeId, citizenId) — one co-sign per
+citizen per issue. Cosign count surfaces to the assigned partner(s)
+as a prioritization signal.
+
+Session 17 (public accountability dashboard) needs no new table —
+it's read-only aggregate queries over existing `challenges` +
+`ChallengeUpdate` data (resolution counts/times per district/domain,
+partner performance), exposed via a new public endpoint (see §8a).
+No individual citizen data exposed.
 
 ---
 
@@ -327,6 +348,16 @@ POST /partners/me/contacts      body: { label, value } -> PartnerContact
 GET  /challenges/:id/updates    -> ChallengeUpdate[]   (Session 14)
 POST /challenges/:id/updates    body: { note } -> ChallengeUpdate
                     (PARTNER only, must be assigned to that challenge)
+
+GET  /public/stats              -> aggregate resolution counts/times +
+                    partner performance, by district/domain (Session 17,
+                    no auth required, no individual citizen data)
+
+POST /challenges/:id/cosign     -> ChallengeCosign   (Session 18,
+                    CITIZEN only, one per citizen per challenge;
+                    surfaces alongside dedup-detection's existing
+                    near-duplicate warning as an alternative to filing
+                    a new report)
 ```
 Session 15's exact reassignment/multi-assign endpoint shapes to be
 appended here once that session starts — not fully speced yet, since
@@ -369,3 +400,12 @@ appended here once that session starts — not fully speced yet, since
   items (citizen editing's exact mechanics, and UI direction) were
   explicitly left to Claude's judgment by frPyP; reasoning for both
   logged in §5a.
+- 2026-09-23 — frPyP (via chat) — Added Sessions 17 (public
+  accountability dashboard) and 18 (co-signing/"me too" on existing
+  issues) to §5a, plus their schema notes in §6a (`ChallengeCosign`
+  table) and endpoints in §8a (`GET /public/stats`, `POST
+  /challenges/:id/cosign`). These came from Claude proposing three
+  concrete "what makes this different from MyGate" features after
+  frPyP pushed back on that being left as unimplemented context;
+  frPyP picked two of the three. A third (SLA-based auto-escalation)
+  was proposed but not picked, not added to the roadmap.
