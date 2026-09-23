@@ -1513,6 +1513,19 @@ even though the file's own top-of-file note describes itself as
 "rewritten in full" each pass, frPyP's standing instruction is
 stricter: nothing in this file is ever deleted, only appended to.
 
+### Pass 26 — 2026-09-23 — frPyP — Session 10 (SPA routing fix) verified on live deployment
+Did: frPyP verified the Pass 24 `vercel.json` rewrite fix on the real
+Vercel deployment. Session 10 is now fully closed — no longer just
+"written," confirmed working live.
+Files touched: none (verification only, no code change).
+Decisions made: none.
+Deviations from spec: none.
+Bugs found/fixed: none new — this closes out the Pass 24 fix.
+Left in a broken/incomplete state: nothing regarding Session 10.
+Anything the next person picking this up needs to know: Session 10 is
+done and live-verified. Session 11 (extra location fields) is next —
+see REFERENCE §5a/§6a.
+
 ---
 
 ## 1. Current phase (Phase 2 status — read this first)
@@ -1821,6 +1834,9 @@ deploy/refresh check; blocked here by the pnpm 10+ build-approval
 gate, see Pass 24). **Session 11 (location fields) is next, not yet
 started.**
 
+**Update, 2026-09-23 (Pass 26):** Session 10 verified on the live
+Vercel deployment by frPyP — closed. Session 11 is next.
+
 ---
 
 ## 5. Known bugs
@@ -1959,6 +1975,7 @@ reassignment remain done.
    prompted), `pnpm --filter frontend build`, deploy or run locally,
    confirm a hard refresh / direct hit on a non-root route (e.g.
    `/dashboard`) no longer 404s.
+   **Update, 2026-09-23 (Pass 26): done — verified live by frPyP.**
 2. **Start Session 11** (extra location fields — `state`/`city`/
    `locality`/`address` on `challenges`, per REFERENCE §6a): update
    `schema.prisma`, run `prisma migrate dev` against the real Neon DB
