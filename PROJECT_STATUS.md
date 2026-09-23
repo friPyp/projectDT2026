@@ -10,14 +10,16 @@
 > right after updating this file. If two people worked at the same time, the
 > git conflict on THIS file is a feature — it's how you notice it happened.
 
-> ⚠️ **HANDOFF NOTE — 2026-09-16, frPyP:** new urgent requirements have
-> come in from outside this chat that will need rearchitecting parts of
-> this project. The details were **not** given to the chat session that
-> wrote this file — get them from frPyP directly before resuming any
-> Priority-B work below, and don't assume the current schema/API
-> contract/architecture is still the target until that's confirmed.
-> Everything in this file reflects state as of Pass 21, working tree
-> clean, nothing uncommitted, written *before* this news arrived.
+> ✅ **HANDOFF NOTE RESOLVED — 2026-09-23:** the new requirements
+> referenced in the 2026-09-16 note below were given directly by frPyP
+> in chat on 2026-09-23. They're now locked into
+> `PROJECT_REFERENCE.md` §5a/§6a/§8a as **Phase 2, Sessions 10–16**.
+> Old Priority-B item "richer partner profiles" is effectively
+> superseded/expanded by Phase 2 Session 12 (partner contact
+> channels) — treat that as its replacement, not a separate
+> remaining item. Dedup detection (old Priority-B) still just needs
+> its real-machine verification pass whenever someone's next on a
+> real machine — unaffected by Phase 2.
 
 ---
 
@@ -1397,9 +1399,96 @@ requirements from frPyP before resuming §6 below or assuming the
 existing schema/contract/architecture holds** — that's the entire
 point of this pass.
 
+### Pass 23 — 2026-09-23 — frPyP (via chat) — Phase 2 requirements gathered and locked into PROJECT_REFERENCE.md
+Branch/commit: main (direct push)
+Did: Got the new requirements referenced in the Pass 22 handoff note
+directly from frPyP in chat. Broke them into six new sessions (10–16)
+and wrote them into `PROJECT_REFERENCE.md` §5a (session table with the
+decision/reasoning for each), §6a (schema deltas: new `state`/`city`/
+`locality`/`address` fields on `challenges`; new `ChallengeAssignment`,
+`PartnerContact`, `ChallengeEditLog`, `ChallengeUpdate` tables), and
+§8a (API contract deltas for the above). Added a note at the top of
+§2 confirming frPyP's explicit call: where Phase 2 conflicts with the
+original "non-negotiable" design, the new version wins — specifically,
+Session 15 replaces single-partner auto-routing (`assignedPartnerId`)
+with multi-partner assignment. No app code touched this pass — pure
+planning/documentation, per the "flag conflicts before proceeding"
+rule.
+Files touched: `PROJECT_REFERENCE.md` only.
+Decisions made:
+- Citizen challenge-editing mechanics (Session 13) and UI redesign
+  direction (Session 16) were both explicitly left to Claude's
+  judgment by frPyP ("do what you feel", "purely your call"). Editing
+  was scoped as in-place edit + an append-only `ChallengeEditLog` for
+  auditability, blocked once a challenge is `COMPLETED`, and does
+  **not** re-trigger categorization/routing (would undermine a
+  partner's existing work). Reasoning logged in REFERENCE §5a.
+- "Direct connection to concerned authorities" was clarified by frPyP
+  in chat to mean: partners declare one or more contact channels
+  (their choice of type/label), citizens can always see and use them
+  for the partner assigned to their challenge. Scoped as a new
+  `PartnerContact` table (Session 12) rather than fixed columns, since
+  a partner may have any number of channels.
+- Multi-partner assignment (Session 15) sequenced **last** of the six,
+  after 11–14 are live-verified — it's the one that touches
+  already-working Priority-A code (routing, partner dashboard,
+  notifications), so it goes last and gets its own careful pass
+  rather than being bundled in.
+Deviations from spec: this pass **is** the deviation, by explicit
+request — see REFERENCE §2's new top note and §9 changelog entry.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: nothing — no code changed. Sessions
+10–16 are all still to build.
+Anything the next person picking this up needs to know: read
+REFERENCE §5a/§6a/§8a before starting any Phase 2 session — that's now
+the source of truth for scope, not the original §2/§6/§8 text (which
+is kept for history).
+
+### Pass 24 — 2026-09-23 — frPyP (via chat) — Session 10 (SPA routing fix) done, not yet live-verified
+Branch/commit: main (direct push)
+Did: Diagnosed the "page not found" bug frPyP reported: Vercel was
+serving the static frontend build with no fallback route, so a hard
+refresh or direct hit on any non-root URL (e.g. `/dashboard`) asked
+Vercel for a file that doesn't exist, instead of letting React Router
+handle it client-side. Added `apps/frontend/vercel.json` with a
+catch-all rewrite to `index.html`. No application code changed.
+Files touched: `apps/frontend/vercel.json` (new file).
+Decisions made: none requiring a call — this is a standard, well-known
+fix for this exact symptom on Vercel + a client-side router, not a
+design choice.
+Deviations from spec: none.
+Bugs found/fixed: fixed the SPA-refresh 404 described above (not
+previously logged as a "known bug" in §5 before this pass — frPyP
+reported it directly in chat this session).
+Left in a broken/incomplete state: **not yet verified live.** This
+sandbox validated the file as syntactically correct JSON, but couldn't
+run a full `pnpm build`/deploy check — blocked by the same pnpm 10+
+build-script-approval gate documented since Pass 1 (non-interactive
+approval isn't possible in this sandbox; confirmed again this pass,
+not a new issue). Needs: on a real machine, `pnpm install` (approving
+esbuild's build script when prompted), `pnpm --filter frontend build`,
+then either `vercel dev`/deploy or a manual check that hitting a
+non-root URL directly (or refreshing on one) no longer 404s.
+Anything the next person picking this up needs to know: this is a
+config-only file, low risk — but still needs the live check above
+before calling Session 10 closed. Session 11 (extra location fields)
+is next; see REFERENCE §5a/§6a — that one needs a real Prisma migrate
+against Neon, same constraint as every schema-touching pass before it.
+
 ---
 
-## 1. Current phase
+## 1. Current phase (Phase 2 status — read this first)
+
+**Phase 2 kicked off 2026-09-23** (Pass 23): frPyP gave the new
+requirements the Pass 22 handoff note was waiting on. They're locked
+into `PROJECT_REFERENCE.md` §5a/§6a/§8a as Sessions 10–16. **Session
+10 (SPA routing fix) is written (Pass 24), not yet live-verified.**
+Sessions 11–16 haven't been started. See §6 below for the exact next
+step. All of Priority-A and the original Priority-B items (below)
+remain done and unaffected by Phase 2, except that old Priority-B
+"richer partner profiles" is superseded by Phase 2 Session 12.
+
+## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
 **Session 2 (auth) is done and confirmed** against the live server and real
@@ -1672,16 +1761,14 @@ people editing the same module in the same day is how things get lost.
 
 ## 4. In progress right now
 
-**See the HANDOFF NOTE at the top of this file first** — new
-requirements are coming that may supersede the Priority-B work below.
+**Phase 2, Session 10 (SPA routing fix) — written, needs live
+verification** (`pnpm build` + a real deploy/refresh check; blocked
+here by the pnpm 10+ build-approval gate, see Pass 24). **Session 11
+(location fields) is next, not yet started.**
 
-**In progress: dedup detection needs a real-machine verification pass**
-(same reason as every backend change — this sandbox can't generate a
-real Prisma Client or hit the live Neon/Render/Vercel stack; see §0
-Pass 21 and §6). Richer error states and admin manual reassignment are
-both done and verified live. Richer partner profiles — the last
-selected Priority-B item — hasn't been started, and per the handoff
-note above, shouldn't be assumed to still be the plan.
+Carried over, unaffected by Phase 2: dedup detection (old Priority-B)
+still needs its real-machine verification pass (Pass 21/§0). Richer
+error states and admin manual reassignment are done and verified live.
 
 ---
 
@@ -1781,29 +1868,39 @@ note above, shouldn't be assumed to still be the plan.
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
 
-**All 9 Priority-A sessions are closed (Pass 18). The project is now
-working through Priority-B (§2), by explicit request (frPyP picked all
-four non-mobile-polish items) — not started on Claude's own
-initiative.**
+**Phase 2 is in progress (see §1, REFERENCE §5a). Next concrete steps:**
 
-Status of the four picked items:
-- **Richer error states — done, verified live (Pass 19).**
-- **Admin manual reassignment — done, verified live (Pass 19,
-  verification Pass 20).**
-- **Dedup detection — written (Pass 21), needs a real-machine pass:**
-  run `prisma generate` + `tsc -b` for `apps/backend`, then submit two
-  similar test challenges in the same district and confirm the second
-  one's submit page shows a heads-up naming the first. Do this before
-  starting the last item.
-- **Richer partner profiles — last one.** Proposed field set
-  (`description`, `website`, `contactEmail`, all nullable on `Partner`)
-  hasn't been confirmed or built; needs a Prisma migration, so also
-  needs a real machine to apply.
+1. **Live-verify Session 10** (SPA routing fix, Pass 24): on a real
+   machine, `pnpm install` (approve esbuild's build script when
+   prompted), `pnpm --filter frontend build`, deploy or run locally,
+   confirm a hard refresh / direct hit on a non-root route (e.g.
+   `/dashboard`) no longer 404s.
+2. **Start Session 11** (extra location fields — `state`/`city`/
+   `locality`/`address` on `challenges`, per REFERENCE §6a): update
+   `schema.prisma`, run `prisma migrate dev` against the real Neon DB
+   (needs a real machine — this sandbox can't reach either
+   `binaries.prisma.sh` or Neon's Postgres port, confirmed again this
+   session), update the submission form + `POST /challenges` and
+   `PATCH /challenges/:id` validation to accept the new optional
+   fields.
+3. Then Session 12 (partner contact channels), 13 (citizen editing),
+   14 (transparency updates log), in that order — each is its own
+   pass, own migration, own live check.
+4. **Session 15 (multi-partner assignment) goes last**, once 11–14 are
+   live and stable — it's the one that touches already-working
+   Priority-A code (routing, partner dashboard, notifications).
+5. Session 16 (UI/accessibility pass) can happen any time relative to
+   11–15 — it's presentation-only, no schema/data dependency.
 
-Either way, same rules as always: flag anything against
-PROJECT_REFERENCE.md before proceeding if it conflicts, get a yes
-before adding any new library/tool, and log each item as its own pass
-in §0 rather than assuming scope.
+Carried over from old Priority-B, unaffected by Phase 2: dedup
+detection (Pass 21) still needs its real-machine verification —
+submit two similar test challenges in the same district and confirm
+the second one's submit page shows a heads-up naming the first.
+
+Same rules as always: flag anything against PROJECT_REFERENCE.md
+before proceeding if it conflicts, get a yes before adding any new
+library/tool, and log each item as its own pass in §0 rather than
+assuming scope.
 
 Environment note carried over for whoever picks up DB- or
 deploy-touching work next: sandboxed dev environments (this one
