@@ -113,6 +113,11 @@ export interface Challenge {
   description: string;
   category: Category;
   district: string;
+  // Phase 2 Session 11: optional plain-text location detail.
+  state: string | null;
+  city: string | null;
+  locality: string | null;
+  address: string | null;
   status: ChallengeStatus;
   assignedPartnerId: string | null;
   team: string | null;
@@ -155,6 +160,10 @@ export function createChallenge(data: {
   description: string;
   category: Category;
   district: string;
+  state?: string;
+  city?: string;
+  locality?: string;
+  address?: string;
 }) {
   return apiFetch<Challenge & { possibleDuplicates: { id: string; title: string }[] }>(
     "/challenges",
