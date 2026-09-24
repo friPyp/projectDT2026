@@ -12,6 +12,16 @@ const CATEGORIES = [
   "PUBLIC_ADMIN",
 ] as const;
 
+// Session 11 helper: optional trimmed text, empty -> null.
+function optionalText(max: number) {
+  return z
+    .string()
+    .trim()
+    .max(max, `Must be ${max} characters or fewer.`)
+    .nullish()
+    .transform((v) => (v ? v : null));
+}
+
 // Matches §8: POST /challenges body. Session 3 scope only — no
 // assignedPartnerId/status here, that's Session 4's auto-routing job
 // (see PROJECT_STATUS.md's Pass log for why POST /challenges doesn't
@@ -23,6 +33,13 @@ export const createChallengeSchema = z.object({
     errorMap: () => ({ message: "Choose a valid category." }),
   }),
   district: z.string().trim().min(1, "District is required."),
+  // Phase 2 Session 11 (PROJECT_REFERENCE.md §5a/§8a): optional plain-text
+  // location detail. Blank/whitespace-only input is stored as null, so the
+  // form can send empty strings without them becoming "" in the database.
+  state: optionalText(100),
+  city: optionalText(100),
+  locality: optionalText(100),
+  address: optionalText(300),
 });
 
 export type CreateChallengeInput = z.infer<typeof createChallengeSchema>;

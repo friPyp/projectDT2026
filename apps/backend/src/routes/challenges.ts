@@ -47,7 +47,7 @@ router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
   if (!parsed.success) {
     return sendError(res, 400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid input.");
   }
-  const { title, description, category, district } = parsed.data;
+  const { title, description, category, district, state, city, locality, address } = parsed.data;
 
   // Priority-B: dedup detection, checked *before* creating so the new
   // challenge never matches against itself. Per the call made when
@@ -65,6 +65,10 @@ router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
       description,
       category: finalCategory,
       district,
+      state,
+      city,
+      locality,
+      address,
       status: assignedPartnerId ? "ASSIGNED" : "SUBMITTED",
       assignedPartnerId,
       citizenId: req.user!.id,
