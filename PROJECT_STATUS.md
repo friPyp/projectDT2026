@@ -29,6 +29,12 @@
 > Priority-B) still just needs its real-machine verification pass
 > whenever someone's next on a real machine — unaffected by Phase 2.
 
+> 📌 **2026-09-24 update, frPyP:** Phase 2 Session 11 (location fields)
+> is written but **not on `main` yet** — it lives on branch
+> `feat/session-11-location-fields` on purpose, because it needs a
+> database change applied in Neon first (see Pass 27 and §6). Read Pass 27
+> before touching anything schema-related.
+
 ---
 
 ## 0. Session log (append one entry per pass — never delete old entries)
@@ -1528,6 +1534,63 @@ see REFERENCE §5a/§6a.
 
 ---
 
+### Pass 27 — 2026-09-24 — frPyP — Phase 2 Session 11 (extra location fields) written on a branch, not live-verified, not merged
+Branch/commit: `feat/session-11-location-fields` (3 commits: `f3b0583`
+schema + SQL, `26b9028` backend, `a755b3b` frontend). `main` only gets
+this status/docs update — deliberately no Session 11 code on `main`
+yet (reason below).
+Did:
+- Read the full commit history (60 commits), PROJECT_REFERENCE.md and
+  this file, confirmed nothing new had landed from anyone else, and
+  picked Session 11 as the next task per §6.
+- `schema.prisma`: added nullable `state`, `city`, `locality`,
+  `address` (all `String?`) to `Challenge`.
+- `apps/backend/prisma/manual-sql/session-11-location-fields.sql`:
+  four `ALTER TABLE "challenges" ADD COLUMN IF NOT EXISTS ...`
+  statements — additive, nullable, safe on live data, safe to re-run.
+- Backend: `createChallengeSchema` accepts the four optional fields
+  (trimmed; blank/whitespace/null all become `null`; max 100 chars for
+  state/city/locality, 300 for address). `POST /challenges` writes
+  them on create. Nothing else in the route changed.
+- Frontend: `Challenge` type gets the four fields; `createChallenge`
+  accepts them; the submit form gets four optional text inputs below
+  District (labelled, `aria-invalid`/`aria-describedby` like the
+  existing fields).
+Verified in this sandbox: the zod schema's behaviour (omitted -> null,
+padded/blank -> trimmed/null, over-long rejected, non-string rejected)
+by running it directly; frontend `tsc -b` passes with 0 errors and
+`vite build` succeeds.
+NOT verified (needs a real machine): `prisma generate` / backend `tsc`
+(sandbox can't download Prisma engines — `binaries.prisma.sh` returns
+403); anything against Neon (sandbox can't reach the Postgres host);
+the live form-to-database round trip.
+Files touched: see branch — `schema.prisma`, the new SQL file,
+`validation/challenges.ts`, `routes/challenges.ts`, `lib/api.ts`,
+`SubmitChallengePage.tsx`. On `main`: `PROJECT_STATUS.md` only.
+Decisions made: see §7 (branch instead of main; SQL instead of
+`migrate dev`; field length caps; blank -> null).
+Deviations from spec: `PROJECT_STATUS.md` §6 (Pass 23/24 text) listed
+`PATCH /challenges/:id` validation under Session 11; REFERENCE §5a/§8a
+assign that endpoint to Session 13. Followed REFERENCE — no PATCH
+endpoint was built.
+Bugs found/fixed: found, not fixed — see §5 (`prisma/migrations` was
+never committed).
+Left in a broken/incomplete state: nothing broken. Session 11 is
+incomplete only in that it isn't applied, merged, or live-verified.
+Anything the next person picking this up needs to know: to finish
+Session 11, in this order — (1) run the SQL file in Neon's SQL editor;
+(2) merge `feat/session-11-location-fields` into `main` (Render/Vercel
+will redeploy); (3) on a real machine run `prisma generate` and backend
+`tsc -b`, then submit a challenge with and without the location fields
+and confirm both work and the values are stored (`SELECT state, city,
+locality, address FROM challenges ORDER BY "createdAt" DESC LIMIT 5`);
+(4) log a verification pass. **Do not merge before step 1** — Prisma
+selects every model column, so deploying the new schema against a
+database without the columns would make challenge reads/creates fail
+in production.
+
+---
+
 ## 1. Current phase (Phase 2 status — read this first)
 
 **Phase 2 kicked off 2026-09-23** (Pass 23): frPyP gave the new
@@ -1538,6 +1601,14 @@ Sessions 11–16 haven't been started. See §6 below for the exact next
 step. All of Priority-A and the original Priority-B items (below)
 remain done and unaffected by Phase 2, except that old Priority-B
 "richer partner profiles" is superseded by Phase 2 Session 12.
+
+**Update, 2026-09-24 (Pass 27):** Session 11 (extra location fields)
+is **written, not yet applied, merged, or live-verified.** The code is
+on branch `feat/session-11-location-fields`, not `main`, because it
+needs four new columns added in Neon first (SQL file in
+`apps/backend/prisma/manual-sql/`). Sessions 12–18 are untouched.
+Dedup detection's real-machine verification is still outstanding
+(unchanged — Session 18 depends on it).
 
 ## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
@@ -1837,6 +1908,13 @@ started.**
 **Update, 2026-09-23 (Pass 26):** Session 10 verified on the live
 Vercel deployment by frPyP — closed. Session 11 is next.
 
+**Update, 2026-09-24 (Pass 27):** Session 11 is in progress — code
+written and pushed on `feat/session-11-location-fields`; waiting on
+(1) the SQL being run in Neon, (2) merge to `main`, (3) real-machine
+`prisma generate` + `tsc -b` + a live submit test. Sessions 12+ not
+started; per the phase rule, none should start until Session 11 is
+logged done.
+
 ---
 
 ## 5. Known bugs
@@ -1931,6 +2009,21 @@ Vercel deployment by frPyP — closed. Session 11 is next.
   its own `role="alert"` message instead of falling through the same
   `return null` branch as the empty case.
 
+- **Found, Pass 27 — open, not fixed:** `apps/backend/prisma/migrations/`
+  was **never committed to the repo** (checked across all branches and
+  history). The Session 1 migration (`20260909050527_init`) was applied
+  from a phone dev setup and its folder never made it into git. Effect:
+  on any fresh clone, `prisma migrate dev` will see the Neon database's
+  migration history as not matching the local folder and will offer to
+  **reset the database, which would wipe all data.** Do not accept a
+  reset. Until the baseline is restored (someone with the original
+  folder can commit it, or a baseline can be created with
+  `prisma migrate diff` + `migrate resolve` on a real machine), schema
+  changes are being applied as additive SQL run in Neon's SQL editor
+  (see `apps/backend/prisma/manual-sql/`), with `schema.prisma` updated
+  to match. Every remaining schema-touching session (12–15, 17–18) hits
+  this same issue.
+
 ---
 
 ## 6. Next task (specific enough that anyone — teammate or fresh chat — can pick it up cold)
@@ -2009,6 +2102,27 @@ internet access; Pass 18 confirmed the same for a live deploy; Pass 19
 hit the same wall again trying to `prisma generate` for the admin
 reassignment work.
 
+**Update, 2026-09-24 (Pass 27) — do this now, in order:**
+
+1. **Run** `apps/backend/prisma/manual-sql/session-11-location-fields.sql`
+   in Neon's SQL editor (additive, safe on live data).
+2. **Merge** branch `feat/session-11-location-fields` into `main`
+   (only after step 1 — otherwise production reads/creates of
+   challenges break, since Prisma selects all model columns).
+3. On a real machine: `pnpm install`, `prisma generate`, backend
+   `tsc -b`; submit a challenge with and without the location fields;
+   confirm both succeed and the values are stored.
+4. Log a verification pass. That closes Session 11.
+5. **Then** Session 12 (partner contact channels). Not before.
+
+Also open: the missing `prisma/migrations` baseline (§5) — worth
+resolving before Session 12 adds a whole new table, since a new table
+is harder to apply safely by hand than four nullable columns.
+
+Note: `PATCH /challenges/:id` is **not** part of Session 11 — it's
+Session 13 per REFERENCE §5a/§8a. The Pass 23/24 text above listing it
+under Session 11 is superseded on this point.
+
 ---
 
 ## 7. Key decisions / deviations from original spec (cumulative — never delete)
@@ -2077,6 +2191,29 @@ reassignment work.
   The field isn't stored on the `Challenge` model — computed fresh each
   time, not persisted.
 
+**Pass 27 (2026-09-24) decisions:**
+- **Branch, not `main`, for Session 11 code.** Every earlier
+  unverified-code checkpoint went straight to `main` because none
+  touched the schema. This one does, and `main` auto-deploys, so
+  pushing it before the Neon columns exist would break production.
+  Status/docs go to `main`; code goes on the branch until step 1-2 in
+  §6 are done.
+- **Additive SQL in Neon instead of `prisma migrate dev`** — see the
+  missing-migrations issue in §5.
+- **Length caps** (my call, not in the spec): 100 characters for
+  state/city/locality, 300 for address. Easy to change; no schema
+  impact since the columns are plain `TEXT`.
+- **Blank -> `null`**: empty or whitespace-only optional fields are
+  stored as `NULL`, never `""`, so "not provided" has one
+  representation.
+- **No display yet.** Session 11's spec is "citizen-fillable at
+  submission"; the dashboards don't show the new fields, and no code
+  was written to. If wanted, that is a small separate request.
+- **No PATCH** — followed REFERENCE §5a (Session 13), not the older
+  status text.
+- The commit-authorship and status-log rule for this session: only
+  the project director's name appears in anything written this pass.
+
 ---
 
 ## 8. Environment variables needed so far
@@ -2108,6 +2245,7 @@ POST /api/v1/auth/login      body: { phone | email, password }         -> { user
 POST /api/v1/auth/logout     (requires Authorization header)           -> { success: true }
 
 POST /api/v1/challenges   body: { title, description, category, district } -> Challenge
+  (Pass 27, on branch `feat/session-11-location-fields` only, not yet on `main`: body also accepts optional { state, city, locality, address } — blank -> null)
                             (CITIZEN only; category is confirmed/refined by
                             keyword match, status: ASSIGNED with
                             assignedPartnerId set via auto-routing — Pass 9,
