@@ -29,11 +29,48 @@
 > Priority-B) still just needs its real-machine verification pass
 > whenever someone's next on a real machine — unaffected by Phase 2.
 
-> 📌 **2026-09-24 update, frPyP:** Phase 2 Session 11 (location fields)
-> is written but **not on `main` yet** — it lives on branch
-> `feat/session-11-location-fields` on purpose, because it needs a
-> database change applied in Neon first (see Pass 27 and §6). Read Pass 27
-> before touching anything schema-related.
+> 📌 **2026-09-24 update, frPyP:** Phase 2 Session 11 (location fields) is
+> **done and merged to `main`.** Neon columns added, real-machine
+> `prisma generate` + `tsc -b` passed, live submit test confirmed values
+> stored correctly (frPyP screenshot). See Pass 28. **This repo now uses
+> `main` only — no feature branches, ever** (see TEAM_WORKFLOW.md Part 3).
+
+---
+
+### Pass 28 — 2026-09-24 — frPyP — Session 11 verified live, merged to main, branch deleted; "main only" made a standing rule
+Did:
+- frPyP ran the SQL from Pass 27 in Neon's SQL editor — the four columns
+  exist and are nullable (confirmed via screenshot of the SQL editor).
+- frPyP ran the branch on a real machine (not the sandbox, not proot):
+  `pnpm install`, `prisma generate` (succeeded, v5.22.0), backend
+  `tsc -b` (0 errors). An initial `Can't reach database server` error on
+  login turned out to be Neon's compute being suspended — resolved by
+  clicking "Connect" in the Neon console, unrelated to this session's code.
+- Live submit test: frPyP submitted challenges with location fields
+  filled and with them blank. Confirmed via
+  `SELECT title, state, city, locality, address FROM challenges ORDER BY
+  "createdAt" DESC LIMIT 5` — filled fields stored and trimmed correctly,
+  omitted fields stored `NULL`. Screenshot on file.
+- Dedup detection (outstanding since Pass 21) also confirmed working
+  during this same test pass, per frPyP.
+- Merged `feat/session-11-location-fields` into `main` (clean, no
+  conflicts) and deleted the branch, both locally and on GitHub.
+- Added a standing rule to TEAM_WORKFLOW.md Part 3: no branches besides
+  `main`, ever. If a change needs a DB migration first, say so and wait
+  for confirmation it ran before pushing the dependent code — don't park
+  it on a branch instead.
+Files touched: TEAM_WORKFLOW.md (new rule), PROJECT_STATUS.md.
+Decisions made: none new — this closes out Pass 27's open items.
+Deviations from spec: none.
+Bugs found/fixed: none new. The missing `prisma/migrations` baseline
+(§5) is still open and still applies to every future schema change.
+Left in a broken/incomplete state: nothing. Session 11 is fully done.
+Anything the next person needs to know: Session 12 (partner contact
+channels) is next per §6. Before starting it, decide whether to restore
+the missing `prisma/migrations` baseline (§5) — Session 12 adds a new
+table, which is riskier to hand-apply via SQL than nullable columns
+were. No branches: build Session 12 directly on `main`, committing and
+pushing in quick succession as work lands, same as every other pass.
 
 ---
 
@@ -1602,13 +1639,11 @@ step. All of Priority-A and the original Priority-B items (below)
 remain done and unaffected by Phase 2, except that old Priority-B
 "richer partner profiles" is superseded by Phase 2 Session 12.
 
-**Update, 2026-09-24 (Pass 27):** Session 11 (extra location fields)
-is **written, not yet applied, merged, or live-verified.** The code is
-on branch `feat/session-11-location-fields`, not `main`, because it
-needs four new columns added in Neon first (SQL file in
-`apps/backend/prisma/manual-sql/`). Sessions 12–18 are untouched.
-Dedup detection's real-machine verification is still outstanding
-(unchanged — Session 18 depends on it).
+**Update, 2026-09-24 (Pass 28):** Session 11 is **done** — merged to
+`main`, live-verified (Neon columns, real-machine compile, live submit
+test). Dedup detection's real-machine verification is also now
+confirmed (frPyP, same test pass). Sessions 12–18 are untouched; Session
+12 is next.
 
 ## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
@@ -1908,12 +1943,9 @@ started.**
 **Update, 2026-09-23 (Pass 26):** Session 10 verified on the live
 Vercel deployment by frPyP — closed. Session 11 is next.
 
-**Update, 2026-09-24 (Pass 27):** Session 11 is in progress — code
-written and pushed on `feat/session-11-location-fields`; waiting on
-(1) the SQL being run in Neon, (2) merge to `main`, (3) real-machine
-`prisma generate` + `tsc -b` + a live submit test. Sessions 12+ not
-started; per the phase rule, none should start until Session 11 is
-logged done.
+**Update, 2026-09-24 (Pass 28):** Session 11 is **closed** — see
+Pass 28. Session 12 (partner contact channels) is next, per the phase
+rule, and should be built directly on `main`.
 
 ---
 
@@ -2102,22 +2134,13 @@ internet access; Pass 18 confirmed the same for a live deploy; Pass 19
 hit the same wall again trying to `prisma generate` for the admin
 reassignment work.
 
-**Update, 2026-09-24 (Pass 27) — do this now, in order:**
+**Update, 2026-09-24 (Pass 28):** Session 11 is done (see Pass 28) —
+next up is **Session 12 (partner contact channels)**, built directly on
+`main` (no branches — see TEAM_WORKFLOW.md Part 3).
 
-1. **Run** `apps/backend/prisma/manual-sql/session-11-location-fields.sql`
-   in Neon's SQL editor (additive, safe on live data).
-2. **Merge** branch `feat/session-11-location-fields` into `main`
-   (only after step 1 — otherwise production reads/creates of
-   challenges break, since Prisma selects all model columns).
-3. On a real machine: `pnpm install`, `prisma generate`, backend
-   `tsc -b`; submit a challenge with and without the location fields;
-   confirm both succeed and the values are stored.
-4. Log a verification pass. That closes Session 11.
-5. **Then** Session 12 (partner contact channels). Not before.
-
-Also open: the missing `prisma/migrations` baseline (§5) — worth
-resolving before Session 12 adds a whole new table, since a new table
-is harder to apply safely by hand than four nullable columns.
+Worth doing first: resolving the missing `prisma/migrations` baseline
+(§5), since Session 12 adds a whole new table, which is harder to apply
+safely by hand than four nullable columns were.
 
 Note: `PATCH /challenges/:id` is **not** part of Session 11 — it's
 Session 13 per REFERENCE §5a/§8a. The Pass 23/24 text above listing it
@@ -2245,7 +2268,7 @@ POST /api/v1/auth/login      body: { phone | email, password }         -> { user
 POST /api/v1/auth/logout     (requires Authorization header)           -> { success: true }
 
 POST /api/v1/challenges   body: { title, description, category, district } -> Challenge
-  (Pass 27, on branch `feat/session-11-location-fields` only, not yet on `main`: body also accepts optional { state, city, locality, address } — blank -> null)
+  (Pass 28, on `main`, live-verified: body also accepts optional { state, city, locality, address } — blank -> null)
                             (CITIZEN only; category is confirmed/refined by
                             keyword match, status: ASSIGNED with
                             assignedPartnerId set via auto-routing — Pass 9,

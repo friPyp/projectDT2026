@@ -135,6 +135,10 @@ Development philosophy for this project:
   rewrite the whole file) before ending.
 - If you hit a merge conflict or push error, stop and explain what happened
   in plain language rather than force-pushing over someone else's work.
+- No branches besides main. Everything goes straight to main. If a change
+  needs a database migration first, say so and wait for confirmation that
+  the migration ran before pushing the code that depends on it — don't
+  create a branch to park it on instead.
 ```
 
 ---
