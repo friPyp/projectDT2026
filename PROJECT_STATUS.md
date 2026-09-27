@@ -108,6 +108,47 @@ next and is now safe to build directly on `main`**, migration and all.
 
 ---
 
+### Pass 30 — 2026-09-27 — frPyP — Vendored a Prisma engine binary into the repo (explicit exception, not normal practice)
+Did:
+- frPyP explicitly directed Claude to commit a compiled Prisma query
+  engine binary (`libquery_engine.so.node`, Debian/OpenSSL 3.0.x build)
+  into the repo, so Claude's sandbox — which has no network access to
+  `binaries.prisma.sh` — can run `prisma generate` / `tsc -b` itself as
+  a sanity check on schema changes across chat sessions (the sandbox's
+  filesystem doesn't persist between conversations, so nothing survives
+  there on its own).
+- Claude flagged this twice before doing it (repo size, platform-
+  specificity, not standard practice for a Prisma project) — frPyP
+  confirmed as project head this is a college project, not production,
+  and the trade-off is acceptable. Proceeding on that explicit
+  direction.
+- Added `tools/prisma-engine-cache/` — kept deliberately separate from
+  `apps/`, isolated from application code. Contains the binary, its
+  `.sha256`, and a README explaining what it is, why it's there, and
+  exactly how to regenerate/refresh it if the Prisma engine version
+  ever moves on (the engine hash the file was built for is recorded in
+  the README).
+Files touched: `tools/prisma-engine-cache/debian-openssl-3.0.x/libquery_engine.so.node`
+(new), `.../libquery_engine.so.node.sha256` (new),
+`tools/prisma-engine-cache/README.md` (new), `PROJECT_STATUS.md`.
+Decisions made: this file has zero effect on the running app — Render,
+Vercel, and every teammate's own machine still get Prisma's engine the
+normal automatic way. It's read only by Claude, only in its own
+sandbox, only as an optional compile check. If this ever confuses a
+future contributor, the README in that folder explains it and this
+entry does too.
+Deviations from spec: not applicable — this is tooling, not a Phase 2
+feature.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: nothing.
+Anything the next person needs to know: don't remove this thinking it's
+stray build output — it's intentional (see the README). If Prisma gets
+upgraded and this starts causing Claude's checks to fail or mismatch,
+refresh it per the README's instructions rather than deleting it
+outright, or just tell Claude and it'll ask for a fresh copy.
+
+---
+
 ## 0. Session log (append one entry per pass — never delete old entries)
 
 ### Pass 1 (in progress, checkpoint push) — 2026-09-09 — frPyP — Session 1 scaffold, partially verified
