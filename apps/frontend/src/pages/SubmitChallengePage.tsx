@@ -12,7 +12,20 @@ interface SubmitFormValues {
   description: string;
   category: Category | "";
   district: string;
+  state: string;
+  city: string;
+  locality: string;
+  address: string;
 }
+
+// Phase 2 Session 11: optional plain-text location fields, rendered
+// below District. Text only — no map picker (REFERENCE §2 ban stands).
+const OPTIONAL_LOCATION_FIELDS: { name: "state" | "city" | "locality" | "address"; label: string; max: number }[] = [
+  { name: "state", label: "State (optional)", max: 100 },
+  { name: "city", label: "City (optional)", max: 100 },
+  { name: "locality", label: "Locality / area (optional)", max: 100 },
+  { name: "address", label: "Address or landmark (optional)", max: 300 },
+];
 
 export default function SubmitChallengePage() {
   const navigate = useNavigate();
@@ -29,7 +42,7 @@ export default function SubmitChallengePage() {
     handleSubmit,
     formState: { errors },
   } = useForm<SubmitFormValues>({
-    defaultValues: { title: "", description: "", category: "", district: "" },
+    defaultValues: { title: "", description: "", category: "", district: "", state: "", city: "", locality: "", address: "" },
   });
 
   // Session 3 scope: created with status SUBMITTED, no partner assigned yet
@@ -190,6 +203,27 @@ export default function SubmitChallengePage() {
               </p>
             )}
           </div>
+
+          {OPTIONAL_LOCATION_FIELDS.map(({ name, label, max }) => (
+            <div key={name}>
+              <label htmlFor={`submit-${name}`} className="block text-sm font-medium text-slate-700 mb-1">
+                {label}
+              </label>
+              <input
+                id={`submit-${name}`}
+                type="text"
+                {...register(name, { maxLength: { value: max, message: `Must be ${max} characters or fewer.` } })}
+                aria-invalid={errors[name] ? "true" : "false"}
+                aria-describedby={errors[name] ? `submit-${name}-error` : undefined}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+              />
+              {errors[name] && (
+                <p id={`submit-${name}-error`} className="text-xs text-red-600 mt-1">
+                  {errors[name]?.message}
+                </p>
+              )}
+            </div>
+          ))}
 
           {serverError && (
             <p role="alert" className="text-sm text-red-600">
