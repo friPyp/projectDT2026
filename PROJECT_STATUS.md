@@ -74,6 +74,40 @@ pushing in quick succession as work lands, same as every other pass.
 
 ---
 
+### Pass 29 — 2026-09-27 — frPyP — Missing prisma/migrations baseline fixed; Session 12 unblocked
+Did:
+- Confirmed with frPyP that the original `20260909050527_init` migration
+  folder is genuinely gone — checked their machine directly (screenshot),
+  only `manual-sql/`, `schema.prisma`, `seed.ts` present under
+  `apps/backend/prisma/`.
+- Walked frPyP through generating a baseline on their real machine:
+  `prisma migrate diff --from-empty --to-url <Neon URL> --script` (reads
+  the live database, not schema.prisma) piped into
+  `apps/backend/prisma/migrations/0_baseline/migration.sql`, then
+  `prisma migrate resolve --applied 0_baseline` to record it as already
+  applied in Neon's `_prisma_migrations` table. `prisma migrate status`
+  confirmed "Database schema is up to date," no drift, no reset offered.
+- frPyP sent the generated `migration.sql`; committed it plus the
+  matching `migration_lock.toml` (provider = postgresql) directly to
+  `main`.
+- Closed the §5 bug entry as fixed.
+Files touched: `apps/backend/prisma/migrations/0_baseline/migration.sql`
+(new), `apps/backend/prisma/migrations/migration_lock.toml` (new),
+`PROJECT_STATUS.md`.
+Decisions made: keep `apps/backend/prisma/manual-sql/` in the repo as a
+historical record of how Session 11 was applied before this fix existed
+— not deleted, not to be added to again.
+Deviations from spec: none.
+Bugs found/fixed: closes the Pass 27 finding (missing migrations
+baseline) — see §5.
+Left in a broken/incomplete state: nothing.
+Anything the next person needs to know: schema changes from here on use
+`prisma migrate dev --name <description>` normally — no more
+hand-written SQL in Neon. **Session 12 (partner contact channels) is
+next and is now safe to build directly on `main`**, migration and all.
+
+---
+
 ## 0. Session log (append one entry per pass — never delete old entries)
 
 ### Pass 1 (in progress, checkpoint push) — 2026-09-09 — frPyP — Session 1 scaffold, partially verified
@@ -1639,11 +1673,10 @@ step. All of Priority-A and the original Priority-B items (below)
 remain done and unaffected by Phase 2, except that old Priority-B
 "richer partner profiles" is superseded by Phase 2 Session 12.
 
-**Update, 2026-09-24 (Pass 28):** Session 11 is **done** — merged to
-`main`, live-verified (Neon columns, real-machine compile, live submit
-test). Dedup detection's real-machine verification is also now
-confirmed (frPyP, same test pass). Sessions 12–18 are untouched; Session
-12 is next.
+**Update, 2026-09-27 (Pass 29):** Session 11 done (Pass 28) and the
+missing-migrations baseline is now fixed (Pass 29, see §5) —
+**Session 12 (partner contact channels) is next, fully unblocked, build
+directly on `main` using `prisma migrate dev` normally.**
 
 ## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
@@ -1943,9 +1976,9 @@ started.**
 **Update, 2026-09-23 (Pass 26):** Session 10 verified on the live
 Vercel deployment by frPyP — closed. Session 11 is next.
 
-**Update, 2026-09-24 (Pass 28):** Session 11 is **closed** — see
-Pass 28. Session 12 (partner contact channels) is next, per the phase
-rule, and should be built directly on `main`.
+**Update, 2026-09-27 (Pass 29):** Session 11 is closed (Pass 28) and
+the migrations baseline is fixed (Pass 29). **Session 12 is next, no
+blockers remain.**
 
 ---
 
@@ -2041,20 +2074,27 @@ rule, and should be built directly on `main`.
   its own `role="alert"` message instead of falling through the same
   `return null` branch as the empty case.
 
-- **Found, Pass 27 — open, not fixed:** `apps/backend/prisma/migrations/`
-  was **never committed to the repo** (checked across all branches and
-  history). The Session 1 migration (`20260909050527_init`) was applied
-  from a phone dev setup and its folder never made it into git. Effect:
-  on any fresh clone, `prisma migrate dev` will see the Neon database's
-  migration history as not matching the local folder and will offer to
-  **reset the database, which would wipe all data.** Do not accept a
-  reset. Until the baseline is restored (someone with the original
-  folder can commit it, or a baseline can be created with
-  `prisma migrate diff` + `migrate resolve` on a real machine), schema
-  changes are being applied as additive SQL run in Neon's SQL editor
-  (see `apps/backend/prisma/manual-sql/`), with `schema.prisma` updated
-  to match. Every remaining schema-touching session (12–15, 17–18) hits
-  this same issue.
+- **Found Pass 27, fixed Pass 29:** `apps/backend/prisma/migrations/`
+  was **never committed to the repo** (the Session 1 migration,
+  `20260909050527_init`, was applied from a phone dev setup and its
+  folder never made it into git). The original folder could not be
+  recovered — confirmed by frPyP checking their local machine, only
+  `manual-sql/`, `schema.prisma` and `seed.ts` were present. Fixed by
+  generating a baseline instead: frPyP ran
+  `prisma migrate diff --from-empty --to-url <Neon URL> --script`,
+  which reads the live database (not `schema.prisma`) and writes the
+  SQL that recreates its current actual structure, then
+  `prisma migrate resolve --applied 0_baseline`, which records in
+  Neon's `_prisma_migrations` table that this migration already
+  happened (it does — no SQL from it was executed; it's a paper trail,
+  not a change). `prisma migrate status` confirmed "Database schema is
+  up to date," no drift, no reset offered. The resulting
+  `0_baseline/migration.sql` and `migration_lock.toml` are now
+  committed. From here on, every schema change should go through
+  `prisma migrate dev --name <description>` like a normal Prisma
+  project — the additive-SQL-in-Neon workaround (`manual-sql/`) is
+  retired; that folder is left in place as a historical record of how
+  Session 11 was applied, not a pattern to repeat.
 
 ---
 
@@ -2134,13 +2174,12 @@ internet access; Pass 18 confirmed the same for a live deploy; Pass 19
 hit the same wall again trying to `prisma generate` for the admin
 reassignment work.
 
-**Update, 2026-09-24 (Pass 28):** Session 11 is done (see Pass 28) —
-next up is **Session 12 (partner contact channels)**, built directly on
-`main` (no branches — see TEAM_WORKFLOW.md Part 3).
-
-Worth doing first: resolving the missing `prisma/migrations` baseline
-(§5), since Session 12 adds a whole new table, which is harder to apply
-safely by hand than four nullable columns were.
+**Update, 2026-09-27 (Pass 29):** Session 12 (partner contact channels)
+is next, built directly on `main` (no branches — TEAM_WORKFLOW.md
+Part 3). The missing `prisma/migrations` baseline that used to make a
+new table risky to add is now fixed (Pass 29) — use
+`prisma migrate dev --name <description>` for its schema change,
+normally.
 
 Note: `PATCH /challenges/:id` is **not** part of Session 11 — it's
 Session 13 per REFERENCE §5a/§8a. The Pass 23/24 text above listing it
