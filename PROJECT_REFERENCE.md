@@ -344,6 +344,8 @@ GET  /partners/:id/contacts     -> PartnerContact[]   (Session 12, public
                     to any authenticated user who can see that challenge)
 POST /partners/me/contacts      body: { label, value } -> PartnerContact
                     (PARTNER only, own record — Session 12)
+GET  /partners/me/contacts      -> PartnerContact[]   (PARTNER only, own
+                    record — added Session 12, see §9 change log)
 
 GET  /challenges/:id/updates    -> ChallengeUpdate[]   (Session 14)
 POST /challenges/:id/updates    body: { note } -> ChallengeUpdate
@@ -409,3 +411,10 @@ appended here once that session starts — not fully speced yet, since
   frPyP pushed back on that being left as unimplemented context;
   frPyP picked two of the three. A third (SLA-based auto-escalation)
   was proposed but not picked, not added to the roadmap.
+
+- **2026-09-28 — Session 12 (Pass 31):** added
+  `GET /partners/me/contacts` (PARTNER only, read-only) to §8a's
+  contract, alongside the two endpoints already listed there. Reason:
+  the partner dashboard needs a way to list its own contact channels
+  without knowing its own partnerId. New error code `PARTNER_NOT_FOUND`
+  (404) for `GET /partners/:id/contacts` with an unknown id.
