@@ -10,13 +10,17 @@ import type { Response } from "express";
 // resources it names explicitly, this extends that set for the new
 // resource rather than reusing CHALLENGE_NOT_FOUND, which would be
 // misleading here.
+// PARTNER_NOT_FOUND added Phase 2 Session 12 (routes/partners.ts),
+// same pattern — GET /partners/:id/contacts with a bad id shouldn't
+// come back as CHALLENGE_NOT_FOUND or a generic 404.
 export type ErrorCode =
   | "UNAUTHORIZED"
   | "FORBIDDEN"
   | "VALIDATION_ERROR"
   | "CHALLENGE_NOT_FOUND"
   | "INVALID_STATUS_TRANSITION"
-  | "NOTIFICATION_NOT_FOUND";
+  | "NOTIFICATION_NOT_FOUND"
+  | "PARTNER_NOT_FOUND";
 
 export function sendError(
   res: Response,

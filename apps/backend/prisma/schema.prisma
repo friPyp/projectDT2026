@@ -68,8 +68,25 @@ model Partner {
   createdAt DateTime    @default(now())
 
   challenges Challenge[] @relation("PartnerChallenges")
+  contacts   PartnerContact[]
 
   @@map("partners")
+}
+
+// Phase 2 Session 12 (PROJECT_REFERENCE.md §6a/§8a): a partner declares
+// one or more contact channels (their own choice of label — "Phone",
+// "Email", "Office", etc. — not a fixed enum) so citizens routed to them
+// have a direct way to reach them, rather than only seeing status via
+// the dashboard.
+model PartnerContact {
+  id        String   @id @default(cuid())
+  partnerId String
+  partner   Partner  @relation(fields: [partnerId], references: [id])
+  label     String
+  value     String
+  createdAt DateTime @default(now())
+
+  @@map("partner_contacts")
 }
 
 model Challenge {

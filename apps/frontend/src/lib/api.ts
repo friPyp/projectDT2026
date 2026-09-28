@@ -264,3 +264,33 @@ export function reassignChallenge(id: string, partnerId: string) {
     body: JSON.stringify({ partnerId }),
   });
 }
+
+// ---- Partner contact channels (Phase 2 Session 12) ----
+
+export interface PartnerContact {
+  id: string;
+  partnerId: string;
+  label: string;
+  value: string;
+  createdAt: string;
+}
+
+// Public to any authenticated user (§8a) — used on the citizen dashboard
+// to show how to reach the partner assigned to a given challenge.
+export function getPartnerContacts(partnerId: string) {
+  return apiFetch<PartnerContact[]>(`/partners/${partnerId}/contacts`);
+}
+
+// Partner's own list, for the management UI on the partner dashboard —
+// see routes/partners.ts for why this exists alongside the §8a-listed
+// endpoints above.
+export function getMyPartnerContacts() {
+  return apiFetch<PartnerContact[]>("/partners/me/contacts");
+}
+
+export function addPartnerContact(data: { label: string; value: string }) {
+  return apiFetch<PartnerContact>("/partners/me/contacts", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
