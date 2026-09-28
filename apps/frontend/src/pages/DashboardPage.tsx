@@ -1,6 +1,13 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getMyChallenges, getNotifications, markNotificationRead, type Notification } from "../lib/api";
+import {
+  getMyChallenges,
+  getNotifications,
+  markNotificationRead,
+  getPartnerContacts,
+  type Notification,
+} from "../lib/api";
 import { CATEGORY_LABELS, STATUS_LABELS, STATUS_STYLES } from "../lib/challengeLabels";
 import AppLayout from "../components/AppLayout";
 
@@ -95,6 +102,65 @@ function NotificationsList() {
   );
 }
 
+// Phase 2 Session 12: how to reach the partner assigned to a challenge.
+// Collapsed by default; contacts are fetched only when opened.
+function PartnerContactsPanel({ partnerId }: { partnerId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["partnerContacts", partnerId],
+    queryFn: () => getPartnerContacts(partnerId),
+    enabled: open,
+  });
+
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="text-sm font-medium text-slate-700 underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400 rounded"
+      >
+        {open ? "Hide partner contact" : "Contact partner"}
+      </button>
+
+      {open && isLoading && (
+        <p aria-live="polite" className="text-sm text-slate-500 mt-2">
+          Loading...
+        </p>
+      )}
+
+      {open && isError && (
+        <p role="alert" className="flex items-center gap-2 text-sm text-red-600 mt-2">
+          Couldn't load contact details.
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="font-medium underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-400 rounded"
+          >
+            Try again
+          </button>
+        </p>
+      )}
+
+      {open && data && data.length === 0 && (
+        <p className="text-sm text-slate-500 mt-2">
+          This partner hasn't added contact details yet.
+        </p>
+      )}
+
+      {open && data && data.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {data.map((c) => (
+            <li key={c.id} className="text-sm text-slate-700">
+              <span className="font-medium text-slate-900">{c.label}:</span> {c.value}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["myChallenges"],
@@ -168,6 +234,9 @@ export default function DashboardPage() {
                     {STATUS_LABELS[challenge.status]}
                   </span>
                 </div>
+                {challenge.assignedPartnerId && (
+                  <PartnerContactsPanel partnerId={challenge.assignedPartnerId} />
+                )}
               </li>
             ))}
           </ul>
