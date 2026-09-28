@@ -268,6 +268,29 @@ route must be declared before `/partners/:id/...` routes.
 
 ---
 
+### Pass 34 — 2026-09-28 — frPyP — Session 12 verified live and closed
+Did:
+- After the Pass 33 route-order fix redeployed, frPyP re-tested the
+  deployed app and reported that everything works: partner contact
+  channels list and can be added, and the citizen-side "Contact
+  partner" panel works. (Reported by frPyP; Claude's sandbox can't
+  reach the live stack.)
+- **Session 12 is closed.**
+Files touched: `PROJECT_STATUS.md` only.
+Decisions made: none new.
+Deviations from spec: none beyond the `GET /partners/me/contacts`
+addition already logged in Pass 31 / REFERENCE §9.
+Bugs found/fixed: none new (route-order bug was Pass 33).
+Left in a broken/incomplete state: nothing. The `_prisma_migrations`
+note in Pass 32 still applies if someone later runs Prisma migrations.
+Anything the next person needs to know: **next is Session 13** (citizen
+edits a submitted challenge to add updates, `PATCH /challenges/:id`,
+CITIZEN only, own challenge, blocked once COMPLETED — see
+PROJECT_REFERENCE.md §5a/§8a). Not started. Sessions 14-16 also not
+started.
+
+---
+
 ## 0. Session log (append one entry per pass — never delete old entries)
 
 ### Pass 1 (in progress, checkpoint push) — 2026-09-09 — frPyP — Session 1 scaffold, partially verified
@@ -1842,6 +1865,9 @@ directly on `main` using `prisma migrate dev` normally.**
 awaiting migration + live verification** (see Pass 31). Sessions 13–16
 not started.
 
+**Update, 2026-09-28 (Pass 34):** Session 12 **verified live and
+closed.** Session 13 is next; nothing from 13-16 has been started.
+
 ## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -2355,6 +2381,10 @@ Session 13 per REFERENCE §5a/§8a. The Pass 23/24 text above listing it
 under Session 11 is superseded on this point.
 
 ---
+
+**Update, 2026-09-28 (Pass 34): Session 12 is closed. The current next
+task is Session 13 (see Pass 34); the list below is the earlier
+Pass 31 version, kept for history.**
 
 **Update, 2026-09-28 (Pass 31) — current next task:**
 1. **Verify Session 12 on a real machine** (steps in Pass 31's "Anything
