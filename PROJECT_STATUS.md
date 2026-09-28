@@ -149,6 +149,74 @@ outright, or just tell Claude and it'll ask for a fresh copy.
 
 ---
 
+### Pass 31 — 2026-09-28 — frPyP — Session 12 (partner contact channels) written; needs real-machine migration + live verification
+Did:
+- Pulled latest first (up to date), read the full commit history, both
+  tracking files. One commit (`ebce711`, pnpm build-script approvals)
+  had an unfamiliar author name/email — frPyP confirmed it was their own
+  push from another account. No action needed.
+- **Schema:** new `PartnerContact` model (`id`, `partnerId`, `label`,
+  `value`, `createdAt`, table `partner_contacts`) + `contacts` relation
+  on `Partner`. Hand-written migration
+  `apps/backend/prisma/migrations/20260928000000_add_partner_contact/`
+  in the same form Prisma generates (this sandbox can't reach Neon, so
+  `migrate dev` could not be run here).
+- **Backend:** new `routes/partners.ts` + `validation/partners.ts`,
+  mounted at `/api/v1/partners` in `index.ts`. Endpoints:
+  `GET /partners/:id/contacts` (any authenticated user),
+  `POST /partners/me/contacts` (PARTNER only, own record),
+  and `GET /partners/me/contacts` (PARTNER only — see Decisions). New
+  error code `PARTNER_NOT_FOUND`.
+- **Frontend:** `api.ts` gained `PartnerContact`, `getPartnerContacts`,
+  `getMyPartnerContacts`, `addPartnerContact`. Partner dashboard has a
+  "Your contact channels" card (list + add form). Citizen dashboard has
+  a collapsed "Contact partner" panel on each challenge that has an
+  assigned partner, fetching contacts only when opened.
+- Sandbox checks: `prisma generate` (v5.22.0, using the vendored engine),
+  backend `tsc --noEmit` 0 errors, frontend `tsc -b --noEmit` 0 errors,
+  `prisma validate` OK (with a dummy DATABASE_URL). **Nothing was run
+  against the live database or the deployed stack.**
+- Pushed in three commits (`1b302b2`, `a1df0b1`, `65bf9c9`) as work
+  progressed.
+Files touched: `apps/backend/prisma/schema.prisma`,
+`apps/backend/prisma/migrations/20260928000000_add_partner_contact/migration.sql`
+(new), `apps/backend/src/routes/partners.ts` (new),
+`apps/backend/src/validation/partners.ts` (new),
+`apps/backend/src/index.ts`, `apps/backend/src/utils/errors.ts`,
+`apps/frontend/src/lib/api.ts`,
+`apps/frontend/src/pages/PartnerDashboardPage.tsx`,
+`apps/frontend/src/pages/DashboardPage.tsx`, `PROJECT_STATUS.md`,
+`PROJECT_REFERENCE.md`.
+Decisions made:
+- **Added `GET /partners/me/contacts`**, not in REFERENCE §8a. A partner
+  user only has their userId on the frontend, not their partnerId, so
+  without it the partner dashboard couldn't list its own channels.
+  Read-only and additive; logged in REFERENCE §9. Easy to remove.
+- `GET /partners/:id/contacts` requires login but not a specific
+  challenge relationship; contact channels are meant to be seen by
+  whoever is routed to that partner, and no challengeId is passed.
+- Label is free text (max 50), value max 300 characters, both required.
+- Contacts can only be added this session; edit/delete wasn't in the
+  Session 12 spec and wasn't built.
+Deviations from spec: only the added endpoint above.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: **the code is pushed to `main` (which
+auto-deploys) but the `partner_contacts` table does not exist in Neon
+yet.** Until the migration is applied, the partner dashboard's contact
+card will show "Couldn't load your contact channels" and the citizen
+"Contact partner" panel will show a load error when opened. Nothing
+else in the app depends on the new table.
+Anything the next person needs to know: on a real machine run
+`cd apps/backend && npx prisma migrate deploy` (or `migrate dev`; the
+baseline from Pass 29 means it should apply only the new migration —
+do NOT accept a database reset if it offers one), then `npx prisma
+generate`, restart, and check: log in as a partner, add a channel,
+confirm it lists; log in as a citizen whose challenge is assigned to
+that partner, open "Contact partner", confirm it appears; confirm a
+citizen/admin calling `POST /partners/me/contacts` gets 403.
+
+---
+
 ## 0. Session log (append one entry per pass — never delete old entries)
 
 ### Pass 1 (in progress, checkpoint push) — 2026-09-09 — frPyP — Session 1 scaffold, partially verified
@@ -1719,6 +1787,10 @@ missing-migrations baseline is now fixed (Pass 29, see §5) —
 **Session 12 (partner contact channels) is next, fully unblocked, build
 directly on `main` using `prisma migrate dev` normally.**
 
+**Update, 2026-09-28 (Pass 31):** Session 12 is **written and pushed,
+awaiting migration + live verification** (see Pass 31). Sessions 13–16
+not started.
+
 ## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -2021,6 +2093,11 @@ Vercel deployment by frPyP — closed. Session 11 is next.
 the migrations baseline is fixed (Pass 29). **Session 12 is next, no
 blockers remain.**
 
+**Update, 2026-09-28 (Pass 31):** Session 12 code is written and on
+`main`; the `partner_contacts` table still needs applying in Neon and
+the feature needs a live check. Until then the new contact UI shows
+load errors (nothing else is affected).
+
 ---
 
 ## 5. Known bugs
@@ -2228,6 +2305,18 @@ under Session 11 is superseded on this point.
 
 ---
 
+**Update, 2026-09-28 (Pass 31) — current next task:**
+1. **Verify Session 12 on a real machine** (steps in Pass 31's "Anything
+   the next person needs to know"): apply the
+   `20260928000000_add_partner_contact` migration to Neon, `prisma
+   generate`, restart, then test partner add/list and the citizen
+   "Contact partner" panel. Log the result as its own pass.
+2. **Then Session 13** (citizen edits a submitted challenge, per
+   REFERENCE §5a) — only after Session 12 is verified. Nothing from
+   Session 13 or later has been started.
+
+---
+
 ## 7. Key decisions / deviations from original spec (cumulative — never delete)
 
 - Auto-routing on submission instead of a manual admin review/validation
@@ -2319,6 +2408,25 @@ under Session 11 is superseded on this point.
 
 ---
 
+- **Session 12 (Pass 31): added `GET /partners/me/contacts`** beyond
+  REFERENCE §8a's list, so a partner can see and manage their own
+  channels (a partner user only knows their userId, not their
+  partnerId). Read-only, additive, removable.
+- **Session 12: `GET /partners/:id/contacts` is open to any authenticated
+  user**, not tied to a specific challenge, because no challengeId is
+  passed and contact channels are meant to be seen by routed citizens.
+- **Session 12: migration hand-written** (sandbox can't reach Neon), in
+  the shape Prisma generates, as
+  `migrations/20260928000000_add_partner_contact/`. Applies on top of
+  the Pass 29 baseline; do not accept a database reset if Prisma offers
+  one.
+- **Session 12: add-only.** No edit/delete of contact channels; not in
+  the Session 12 spec.
+- The commit-authorship and status-log rule for this session: only the
+  project director's name (frPyP) appears in anything written this pass.
+
+---
+
 ## 8. Environment variables needed so far
 
 ```
@@ -2391,6 +2499,14 @@ API endpoints in the frozen §8 contract are now written and verified
 live. Session 8 (polish) is also done and verified live (Pass 17), and
 Session 9 (deploy) closed out the project (Pass 18) — all 9 sessions
 per PROJECT_REFERENCE.md §5 are complete.
+
+---
+
+**Session 12 additions (Pass 31, written, not yet live-verified):**
+`GET /partners/:id/contacts` (any authenticated user),
+`GET /partners/me/contacts` (PARTNER; added beyond the §8a list),
+`POST /partners/me/contacts` (PARTNER; body `{label, value}`, returns
+201 with the created contact). New error code `PARTNER_NOT_FOUND`.
 
 ---
 
