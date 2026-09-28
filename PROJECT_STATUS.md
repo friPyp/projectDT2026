@@ -217,6 +217,34 @@ citizen/admin calling `POST /partners/me/contacts` gets 403.
 
 ---
 
+### Pass 32 — 2026-09-28 — frPyP — Session 12 table applied to Neon by hand; live verification still pending
+Did:
+- frPyP ran the `partner_contacts` `CREATE TABLE` + foreign-key SQL
+  (same content as `migrations/20260928000000_add_partner_contact/migration.sql`)
+  directly in Neon's SQL editor. Claude's sandbox can't reach Neon
+  (`host_not_allowed`), so Claude did not run or check it.
+- The "table doesn't exist yet" state described in Pass 31 no longer
+  applies, assuming the SQL ran without error.
+Files touched: `PROJECT_STATUS.md` only.
+Decisions made: none new.
+Deviations from spec: none.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: **Session 12 is NOT yet live-verified.**
+Still to check: partner adds and lists a channel; a citizen with a
+challenge assigned to that partner sees it under "Contact partner";
+a citizen/admin calling `POST /partners/me/contacts` gets 403. Also
+confirm Render's build ran `prisma generate` (new model) — if the
+partner card still errors, check that build log first.
+Anything the next person needs to know: because the table was created
+by hand, Neon's `_prisma_migrations` does not record
+`20260928000000_add_partner_contact`. If anyone later runs
+`prisma migrate dev` or `migrate deploy` and it fails with "table
+already exists", run
+`npx prisma migrate resolve --applied 20260928000000_add_partner_contact`
+once, then retry. Do not accept a database reset.
+
+---
+
 ## 0. Session log (append one entry per pass — never delete old entries)
 
 ### Pass 1 (in progress, checkpoint push) — 2026-09-09 — frPyP — Session 1 scaffold, partially verified
