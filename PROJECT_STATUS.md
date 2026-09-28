@@ -221,8 +221,8 @@ citizen/admin calling `POST /partners/me/contacts` gets 403.
 Did:
 - frPyP ran the `partner_contacts` `CREATE TABLE` + foreign-key SQL
   (same content as `migrations/20260928000000_add_partner_contact/migration.sql`)
-  directly in Neon's SQL editor. Claude's sandbox can't reach Neon
-  (`host_not_allowed`), so Claude did not run or check it.
+  directly in Neon's SQL editor. The build sandbox can't reach Neon
+  (`host_not_allowed`), so the SQL was not run or checked from there.
 - The "table doesn't exist yet" state described in Pass 31 no longer
   applies, assuming the SQL ran without error.
 Files touched: `PROJECT_STATUS.md` only.
@@ -273,7 +273,7 @@ Did:
 - After the Pass 33 route-order fix redeployed, frPyP re-tested the
   deployed app and reported that everything works: partner contact
   channels list and can be added, and the citizen-side "Contact
-  partner" panel works. (Reported by frPyP; Claude's sandbox can't
+  partner" panel works. (Reported by frPyP; the build sandbox can't
   reach the live stack.)
 - **Session 12 is closed.**
 Files touched: `PROJECT_STATUS.md` only.
@@ -288,6 +288,64 @@ edits a submitted challenge to add updates, `PATCH /challenges/:id`,
 CITIZEN only, own challenge, blocked once COMPLETED — see
 PROJECT_REFERENCE.md §5a/§8a). Not started. Sessions 14-16 also not
 started.
+
+---
+
+### Pass 35 — 2026-09-28 — frPyP — Session 13 design decided and written into the reference (documentation only, no code)
+Did:
+- frPyP asked for the open Session 13 questions to be decided on
+  sensibility and UX grounds and recorded in the repo so a fresh chat
+  can pick it up. Nothing was built.
+- Wrote the full design into `PROJECT_REFERENCE.md` (end of §8a,
+  "Session 13 — decided design"): endpoints, validation, no-op
+  handling, transaction, schema, frontend UX, and what is out of scope.
+- Read §5a/§6a/§8a first. §5a had already settled the core
+  (in-place edit + append-only `ChallengeEditLog`, no re-routing on
+  edit); this pass filled in the details.
+Files touched: `PROJECT_REFERENCE.md`, `PROJECT_STATUS.md`,
+`apps/backend/src/routes/partners.ts` (one comment reworded, no logic
+change).
+Decisions made (full text in REFERENCE §8a):
+- Editable: title, description, category, state, city, locality,
+  address. **Not district** (dedup and Session 17 stats depend on it).
+- Category edits allowed, never re-route; helper text warns the citizen,
+  history shows the change to partner/admin.
+- Strict PATCH body; no-op edits write nothing; update + log row in one
+  transaction; new error code `CHALLENGE_COMPLETED` (409).
+- **Added** `GET /challenges/:id/edits` (citizen own / assigned partner /
+  admin) so the log is actually visible, as §5a promises.
+- Inline edit form in the citizen dashboard card; one shared
+  `ChallengeEditHistory` component on citizen, partner and admin views;
+  no new libraries.
+Deviations from spec: `domains` removed from §8a's `PATCH
+/challenges/:id` line (it is Session 15's; logged in REFERENCE §9).
+`GET /challenges/:id/edits` added beyond §8a (logged in §9).
+Bugs found/fixed: none in code. Housekeeping: reworded four earlier
+lines in this file and one code comment that named the assistant, to
+follow the rule that only frPyP's name appears in the repo.
+Left in a broken/incomplete state: nothing.
+Anything the next person needs to know:
+- **Start at REFERENCE §8a "Session 13 — decided design."** Don't
+  re-decide it; if something in it looks wrong, say so before building.
+- Suggested commit order (push after each): 1) schema + hand-written
+  migration + backend route + validation + error code; 2) frontend
+  (api.ts, edit form, shared history component, wired into the three
+  views); 3) status/reference docs. frPyP pastes the migration SQL into
+  Neon's SQL editor; then verify live and log it as its own pass.
+- Sandbox checks that worked in Pass 31: `pnpm install`, copy the
+  vendored engine from `tools/prisma-engine-cache/` into the
+  `@prisma/engines` folder as
+  `libquery_engine-debian-openssl-3.0.x.so.node`, then set
+  `PRISMA_QUERY_ENGINE_LIBRARY` to it and
+  `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true` before `prisma generate`,
+  backend `tsc --noEmit`, and frontend `tsc -b --noEmit`. `prisma
+  validate` needs a dummy `DATABASE_URL`.
+- Once the table is applied by hand, remember the
+  `prisma migrate resolve --applied <migration folder name>` note from
+  Pass 32.
+- Keep static route paths above `/:id` ones (Pass 33 bug).
+- Session 14 onward: not started; don't begin until Session 13 is
+  verified live.
 
 ---
 
@@ -1868,6 +1926,10 @@ not started.
 **Update, 2026-09-28 (Pass 34):** Session 12 **verified live and
 closed.** Session 13 is next; nothing from 13-16 has been started.
 
+**Update, 2026-09-28 (Pass 35):** Session 13's design is now decided
+and written down (REFERENCE §8a, "Session 13 — decided design"). Still
+not built.
+
 ## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -2398,6 +2460,13 @@ Pass 31 version, kept for history.**
 
 ---
 
+**Update, 2026-09-28 (Pass 35): the current next task is to build
+Session 13 exactly as written in `PROJECT_REFERENCE.md` §8a ("Session 13
+— decided design") and Pass 35's handoff notes. Earlier lists in this
+section are kept for history.**
+
+---
+
 ## 7. Key decisions / deviations from original spec (cumulative — never delete)
 
 - Auto-routing on submission instead of a manual admin review/validation
@@ -2505,6 +2574,15 @@ Pass 31 version, kept for history.**
   the Session 12 spec.
 - The commit-authorship and status-log rule for this session: only the
   project director's name (frPyP) appears in anything written this pass.
+
+---
+
+- **Session 13 (Pass 35, design only):** editable fields exclude
+  `district`; category edits never re-route; no-op edits write nothing;
+  update + log row in one transaction; `GET /challenges/:id/edits`
+  added so partners/admin can see the history; one shared history
+  component on all three views; `domains` removed from the Session 13
+  PATCH shape (Session 15's). Full text in REFERENCE §8a.
 
 ---
 
