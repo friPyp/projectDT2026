@@ -336,9 +336,10 @@ POST /challenges   body now also accepts optional { state, city, locality, addre
                     until Session 15 lands, single-category behavior is
                     unchanged)
 PATCH /challenges/:id           body: any of { title, description, category,
-                    domains, state, city, locality, address } -> Challenge
+                    state, city, locality, address } -> Challenge
                     (CITIZEN only, own challenge, blocked once COMPLETED —
-                    Session 13)
+                    Session 13. `domains` removed from this line 2026-09-28:
+                    it belongs to Session 15, see §9 change log.)
 
 GET  /partners/:id/contacts     -> PartnerContact[]   (Session 12, public
                     to any authenticated user who can see that challenge)
@@ -364,6 +365,94 @@ POST /challenges/:id/cosign     -> ChallengeCosign   (Session 18,
 Session 15's exact reassignment/multi-assign endpoint shapes to be
 appended here once that session starts — not fully speced yet, since
 11–14 land first.
+
+
+### Session 13 — decided design (2026-09-28, decided by delegation from frPyP; not yet built)
+
+Written so whoever builds Session 13 doesn't have to re-decide anything.
+Where this refines §5a/§6a it is more specific, not contradictory.
+
+**Endpoints**
+- `PATCH /challenges/:id` — CITIZEN, own challenge only. Body: any
+  non-empty subset of `{ title, description, category, state, city,
+  locality, address }`. Use a **strict** zod schema: any other key
+  (including `district` and `domains`) is a `VALIDATION_ERROR`, and an
+  empty body is a `VALIDATION_ERROR`. Same rules and length caps as
+  `createChallengeSchema` (title/description/category can't be blank if
+  sent; blank optional location fields become `null`).
+  Errors: 404 `CHALLENGE_NOT_FOUND`; 403 `FORBIDDEN` if it isn't theirs;
+  **409 new code `CHALLENGE_COMPLETED`** if status is `COMPLETED`
+  ("This challenge is completed and can no longer be edited.").
+  Returns the updated `Challenge` (200).
+- **No-op edits:** compare against current values and drop fields that
+  didn't actually change. If nothing changed, return 200 with the
+  current challenge, write no log row, don't touch `updatedAt`.
+- **Otherwise** update the challenge and create one `ChallengeEditLog`
+  row **in the same `prisma.$transaction`**, so an edit can never exist
+  without its log entry. One row per save (not per field);
+  `changedFields` = `{ "<field>": { "before": ..., "after": ... } }` for
+  changed fields only (`null` for blank locations).
+- An edit does **not**: re-run `categorize()`, re-route, change status,
+  send notifications, or re-run dedup. The category is stored as the
+  citizen sent it.
+- `GET /challenges/:id/edits` — **added beyond §8a**, because §5a
+  promises partners/admin can see what changed and nothing else exposes
+  the log. CITIZEN (own challenge), PARTNER (only if assigned to it),
+  ADMIN (any). Newest first. Returns `ChallengeEditLog[]`
+  (`{ id, challengeId, editedAt, changedFields }`). 404/403 follow the
+  same patterns as the Session 5 routes. Logged in §9.
+
+**Editable fields:** `title`, `description`, `category`, `state`,
+`city`, `locality`, `address`. **Not `district`.** Dedup detection
+and Session 17's per-district stats both depend on district staying
+stable, and §5a's list doesn't include it. (Routing is by category,
+not district.) A wrongly-entered district is out of scope for Session 13.
+
+**Category edits are allowed but never re-route** (per §5a). Guard
+rails for UX: helper text under the category field — "Changing the
+category won't move your challenge to a different partner." — and the
+change shows up in the edit history so the partner and admin can see
+it; an admin can reassign with the existing reassignment feature.
+
+**Schema** (`ChallengeEditLog`, table `challenge_edit_logs`): `id`
+(cuid), `challengeId` (FK to `challenges.id`, `ON DELETE RESTRICT ON
+UPDATE CASCADE`), `editedAt` (`DEFAULT now()`), `changedFields`
+(`JSONB NOT NULL`), index on `challengeId`
+(`challenge_edit_logs_challengeId_idx`), relation field `editLogs` on
+`Challenge`. Append-only: no update or delete routes, ever.
+Hand-write the migration folder like Session 12 did, and give frPyP
+the same SQL to paste into Neon's SQL editor (the build sandbox can't
+reach Neon).
+
+**Frontend UX**
+- **Citizen dashboard:** an "Edit" button on each challenge card,
+  hidden when `COMPLETED`. It opens an **inline form inside the card**
+  (no new page or route) prefilled with current values, reusing the
+  Submit page's labels, caps and `CATEGORY_LABELS`, and whatever form
+  handling the Submit page already uses — **no new libraries.**
+- Send only the fields that changed. Save is disabled until something
+  actually differs and while a save is pending. Cancel discards edits.
+  On success: collapse the form, invalidate `["myChallenges"]` and the
+  edit-history query, and show a brief "Saved" message (`aria-live`
+  polite). Errors show inline with `role="alert"`; on
+  `CHALLENGE_COMPLETED`, refetch so the Edit button disappears.
+  Move focus to the first field on open and back to the Edit button on
+  close.
+- **Edit history:** one shared `ChallengeEditHistory` component used on
+  the citizen dashboard, partner dashboard and admin challenge list. It
+  fetches `GET /challenges/:id/edits` for each card, renders nothing
+  when there are no edits, otherwise shows "Edited N× · last <date>" as
+  an expandable control. Expanded: newest first, each entry with its
+  date and human-readable "Field: before → after" lines (blank shown as
+  "(blank)"; long text truncated with an ellipsis). Eager per-card
+  fetching is fine at current scale; a batch endpoint is a later
+  optimisation, not part of this session.
+
+**Not in Session 13:** re-routing, partner notifications (partners
+currently have no notification UI, so the history panel is how they
+find out), editing after `COMPLETED`, undoing or deleting edits,
+district changes, `domains` (Session 15), partner status notes
+(Session 14).
 
 ---
 
@@ -418,3 +507,10 @@ appended here once that session starts — not fully speced yet, since
   the partner dashboard needs a way to list its own contact channels
   without knowing its own partnerId. New error code `PARTNER_NOT_FOUND`
   (404) for `GET /partners/:id/contacts` with an unknown id.
+
+- **2026-09-28 — Session 13 design decided (no code yet):** added the
+  "Session 13 — decided design" block at the end of §8a. Also removed
+  `domains` from the `PATCH /challenges/:id` line in §8a (it is a
+  Session 15 field; keeping it there risked building ahead), and added
+  `GET /challenges/:id/edits` plus the new error code
+  `CHALLENGE_COMPLETED`.

@@ -24,7 +24,7 @@ async function getPartnerForUser(userId: string) {
 // getPartnerForUser already handles for other partner-only routes).
 // Read-only, additive, mirrors the existing GET /partners/:id/contacts
 // shape exactly. Logged in PROJECT_STATUS.md §7 and
-// PROJECT_REFERENCE.md §9 as a Claude-made addition, same convention as
+// PROJECT_REFERENCE.md §9 as an addition beyond the original contract, same convention as
 // GET /admin/partners before it.
 router.get("/me/contacts", requireAuth, requireRole("PARTNER"), async (req, res) => {
   const partner = await getPartnerForUser(req.user!.id);
