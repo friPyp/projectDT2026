@@ -14,28 +14,9 @@ async function getPartnerForUser(userId: string) {
   return prisma.partner.findUnique({ where: { userId } });
 }
 
-// GET /partners/:id/contacts — PROJECT_REFERENCE.md §8a: "public to any
-// authenticated user who can see that challenge." This route doesn't
-// re-check which specific challenge the caller is looking at (no
-// challengeId is passed) — any authenticated CITIZEN/PARTNER/ADMIN can
-// look up any partner's declared contact channels by partner id, same
-// as GET /admin/partners already exposes partner org info. Partner
-// contact info isn't sensitive in the way a challenge's own content is,
-// so this doesn't need the same ownership check as e.g.
-// PATCH /challenges/:id/team.
-router.get("/:id/contacts", requireAuth, async (req, res) => {
-  const partner = await prisma.partner.findUnique({ where: { id: req.params.id } });
-  if (!partner) {
-    return sendError(res, 404, "PARTNER_NOT_FOUND", "No partner with that id.");
-  }
-
-  const contacts = await prisma.partnerContact.findMany({
-    where: { partnerId: partner.id },
-    orderBy: { createdAt: "asc" },
-  });
-  res.json(contacts);
-});
-
+// ORDER MATTERS: this must stay above GET /:id/contacts below, or Express
+// matches "/me/contacts" as id="me" and returns PARTNER_NOT_FOUND (bug
+// found and fixed in Pass 33).
 // GET /partners/me/contacts — not in REFERENCE §8a's original list, added
 // so the partner dashboard has a way to see its own channels to manage
 // them (a partner user only knows their own userId, not their partnerId,
@@ -49,6 +30,28 @@ router.get("/me/contacts", requireAuth, requireRole("PARTNER"), async (req, res)
   const partner = await getPartnerForUser(req.user!.id);
   if (!partner) {
     return sendError(res, 403, "FORBIDDEN", "No partner profile linked to this account.");
+  }
+
+  const contacts = await prisma.partnerContact.findMany({
+    where: { partnerId: partner.id },
+    orderBy: { createdAt: "asc" },
+  });
+  res.json(contacts);
+});
+
+// GET /partners/:id/contacts — PROJECT_REFERENCE.md §8a: "public to any
+// authenticated user who can see that challenge." This route doesn't
+// re-check which specific challenge the caller is looking at (no
+// challengeId is passed) — any authenticated CITIZEN/PARTNER/ADMIN can
+// look up any partner's declared contact channels by partner id, same
+// as GET /admin/partners already exposes partner org info. Partner
+// contact info isn't sensitive in the way a challenge's own content is,
+// so this doesn't need the same ownership check as e.g.
+// PATCH /challenges/:id/team.
+router.get("/:id/contacts", requireAuth, async (req, res) => {
+  const partner = await prisma.partner.findUnique({ where: { id: req.params.id } });
+  if (!partner) {
+    return sendError(res, 404, "PARTNER_NOT_FOUND", "No partner with that id.");
   }
 
   const contacts = await prisma.partnerContact.findMany({
