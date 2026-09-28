@@ -245,6 +245,29 @@ once, then retry. Do not accept a database reset.
 
 ---
 
+### Pass 33 — 2026-09-28 — frPyP — Session 12 route-order bug fixed (partner contact list failed to load)
+Did:
+- frPyP tested Session 12 live after applying the table in Neon: the
+  partner dashboard's contact card showed a load error.
+- Cause: in `apps/backend/src/routes/partners.ts`, `GET /:id/contacts`
+  was defined before `GET /me/contacts`, so Express matched
+  `/partners/me/contacts` as `id = "me"` and returned `PARTNER_NOT_FOUND`.
+  `POST /partners/me/contacts` was unaffected (no wildcard POST).
+- Fix: moved `GET /me/contacts` above `GET /:id/contacts`, with a comment
+  saying the order matters. Checked route matching with a small
+  throwaway express script (`/me/contacts` -> own handler,
+  `/<id>/contacts` -> id handler); backend `tsc --noEmit` 0 errors.
+Files touched: `apps/backend/src/routes/partners.ts`, `PROJECT_STATUS.md`.
+Decisions made: none.
+Deviations from spec: none.
+Bugs found/fixed: the route-order bug above (introduced in Pass 31).
+Left in a broken/incomplete state: Session 12 still **not live-verified**
+until frPyP re-tests after Render redeploys this fix.
+Anything the next person needs to know: any future `/partners/me/...`
+route must be declared before `/partners/:id/...` routes.
+
+---
+
 ## 0. Session log (append one entry per pass — never delete old entries)
 
 ### Pass 1 (in progress, checkpoint push) — 2026-09-09 — frPyP — Session 1 scaffold, partially verified
