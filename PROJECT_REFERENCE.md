@@ -520,3 +520,13 @@ district changes, `domains` (Session 15), partner status notes
   implemented as written in §8a's "Session 13 — decided design", with the
   `ChallengeEditLog` table (`challenge_edit_logs`). Live verification
   pending; see PROJECT_STATUS.md Pass 36.
+
+- **2026-09-29 — Session 13 verified live; team/reassign tweaks (Pass 38):**
+  (a) `PATCH /challenges/:id/team` now rejects re-saving the current team
+  name (400 `VALIDATION_ERROR`); (b) `PATCH /admin/challenges/:id/reassign`
+  now rejects reassigning to the partner who already has the challenge
+  (400 `VALIDATION_ERROR`) and the admin dropdown hides the current
+  partner; (c) the team-name input was **removed from the partner
+  dashboard UI** at frPyP's request — this overrides the "set a team"
+  partner action in §2/§5/§8 for now. The backend route and `team`
+  column remain.

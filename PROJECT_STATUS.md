@@ -29,6 +29,11 @@
 > Priority-B) still just needs its real-machine verification pass
 > whenever someone's next on a real machine — unaffected by Phase 2.
 
+> 📌 **2026-09-29 (later) update, frPyP:** Session 13 is **verified live
+> and closed** (Pass 38). Next task: Session 14 (partner status-note log,
+> REFERENCE §5a). The partner team-name box was removed from the UI on
+> request; backend kept.
+
 > 📌 **2026-09-29 update, frPyP:** Session 13 (citizen edits a submitted
 > challenge) is **built and pushed to `main`; the Neon table is applied;
 > live verification is still pending.** See Pass 36 for the checklist and
@@ -457,6 +462,45 @@ Did:
 Not changed: git commit messages from earlier passes (rewriting them
 would need a force-push, which is not being done).
 Left in a broken/incomplete state: nothing.
+
+---
+
+### Pass 38 — 2026-09-29 — frPyP — Session 13 verified live; team-name and reassign rules tightened
+Did:
+- **Session 13 verified live by frPyP:** editing, history, and the rest of
+  the Pass 36 checklist all worked. Session 13 is closed. Session 14 is
+  next.
+- Backend `PATCH /challenges/:id/team`: saving the same name the challenge
+  already has (ignoring case and surrounding spaces) is now rejected with
+  400 `VALIDATION_ERROR` "That is already the current team name."
+- Backend `PATCH /admin/challenges/:id/reassign`: reassigning to the
+  partner that already has the challenge is now rejected with 400
+  `VALIDATION_ERROR` "This challenge is already assigned to that partner."
+  (so it no longer resets status, clears the team or re-notifies for
+  nothing).
+- Frontend, admin: the current partner no longer appears in the
+  "Reassign to..." dropdown.
+- Frontend, partner: **the team-name box and "Save team" button were
+  removed from the partner dashboard on frPyP's request** ("no idea what
+  it is or why it's there"). This departs from REFERENCE §2/§5/§8, which
+  list "set a team" as a partner action; it was flagged before doing it.
+  Kept on purpose: the backend route, the `team` column, the
+  `updateChallengeTeam()` helper in `lib/api.ts`, and the clearing of
+  `team` on reassign, so the feature can return. Nothing else depended on
+  it (moving status forward never required a team).
+Tested (sandbox only): backend `tsc` passes; frontend `tsc -b` and
+`vite build` pass. **Not tested live:** the two new rejections and the
+dropdown filter — see checks below.
+Files touched: `apps/backend/src/routes/challenges.ts`,
+`apps/backend/src/routes/admin.ts`,
+`apps/frontend/src/pages/PartnerDashboardPage.tsx`,
+`apps/frontend/src/pages/AdminDashboardPage.tsx`, `PROJECT_STATUS.md`,
+`PROJECT_REFERENCE.md`.
+Left in a broken/incomplete state: nothing known.
+Live checks for frPyP: (1) admin: open "Reassign to..." on a challenge —
+its current partner is not listed; (2) partner dashboard shows no team
+box, and "Move to ..." still works; (3) optional, via API only (the UI no
+longer exposes it): a second identical team-name save returns 400.
 
 ---
 
@@ -2600,6 +2644,10 @@ Session 13 exactly as written in `PROJECT_REFERENCE.md` §8a ("Session 13
 section are kept for history.**
 
 ---
+
+**Update, 2026-09-29 (Pass 38): Session 13 is verified live and closed.
+The current next task is Session 14 (REFERENCE §5a). The Pass 36 wording
+below is superseded and kept for history.**
 
 **Update, 2026-09-29 (Pass 36): the current next task is to live-verify
 Session 13 using the checklist in Pass 36 (after running the `migrate
