@@ -243,6 +243,12 @@ router.patch("/:id/team", requireAuth, requireRole("PARTNER"), async (req, res) 
     return sendError(res, 403, "FORBIDDEN", "This challenge isn't assigned to you.");
   }
 
+  // Rejects re-saving the name the challenge already has (ignoring case
+  // and surrounding spaces). Added on frPyP's request, 2026-09-29.
+  if (challenge.team && challenge.team.trim().toLowerCase() === parsed.data.team.toLowerCase()) {
+    return sendError(res, 400, "VALIDATION_ERROR", "That is already the current team name.");
+  }
+
   const updated = await prisma.challenge.update({
     where: { id: challenge.id },
     data: { team: parsed.data.team },
