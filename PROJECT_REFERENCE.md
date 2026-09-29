@@ -158,12 +158,12 @@ logged done in PROJECT_STATUS.md.
 | 10 | SPA routing fix | Hard refresh / direct URL hit on any frontend route was returning "page not found" — Vercel was serving the static build with no fallback to `index.html`, so React Router never got a chance to handle the route client-side. Fixed with `apps/frontend/vercel.json` rewrite. | No schema/contract impact. |
 | 11 | Extra location fields | `state`, `city`, `locality` (all nullable text) + optional plain-text `address` added to `challenges`, citizen-fillable at submission (and on edit, see Session 13). | Plain text only — §2's "no maps/GPS/geolocation" ban still holds, this is not a map picker. |
 | 12 | Partner contact channels | Partners declare one or more contact channels (e.g. phone, email, office address — free text per channel, partner's choice which ones); citizens can always see and use these to reach the partner assigned to their challenge directly. Answers frPyP's "direct connection to concerned authorities" ask. | New `PartnerContact` table (see §6a) rather than fixed columns on `partners`, since a partner may have 1+ channels of mixed types. |
-| 13 | Citizen challenge editing | Citizen can edit their own challenge's title/description/category/location fields after submission, to add updates (e.g. new developments since filing). Implemented as in-place edit + an append-only `ChallengeEditLog` (see §6a) so partners/admin can see what changed and when, rather than silently overwriting history. Editing is blocked once a challenge is `COMPLETED`. Re-running categorization/routing on edit is explicitly **not** done — an edit does not reassign or re-route; that would undermine the partner's existing work on it. | Claude's call, per frPyP ("do what you feel would be best"). |
+| 13 | Citizen challenge editing | Citizen can edit their own challenge's title/description/category/location fields after submission, to add updates (e.g. new developments since filing). Implemented as in-place edit + an append-only `ChallengeEditLog` (see §6a) so partners/admin can see what changed and when, rather than silently overwriting history. Editing is blocked once a challenge is `COMPLETED`. Re-running categorization/routing on edit is explicitly **not** done — an edit does not reassign or re-route; that would undermine the partner's existing work on it. | the assistant's call, per frPyP ("do what you feel would be best"). |
 | 14 | Transparency / status updates log | New `ChallengeUpdate` entity (see §6a): partners can post short status notes against a challenge (visible to the citizen and admin), separate from the coarse `status` enum. Citizen dashboard shows these as a timeline under each challenge. | New table + new endpoints, additive — doesn't change existing `status` transition logic. |
 | 15 | Multi-partner / multi-domain assignment | The core rearchitect: a challenge can be routed to **more than one** partner when it spans multiple domains, instead of the single `assignedPartnerId` model. Citizens get a corresponding option at submission (pick more than one relevant domain, or let auto-categorization suggest multiple). Partners assigned to the same multi-domain challenge get a shared coordination view (see §6a `ChallengeAssignment`). This replaces §6's single `assignedPartnerId` field — confirmed by frPyP as an explicit, intentional break from the original "auto-routing to one partner" design. | frPyP: "wherever it conflicts with the core design, this must be adopted as the new version." |
-| 16 | UI/accessibility pass | Visual redesign — less plain, fuller layout, more accessible. No functional/data changes. Claude's call on direction (frPyP: "purely your call"), logged with reasoning when done rather than guessed at silently. | Claude's call. |
-| 17 | Public accountability dashboard | New, unauthenticated public page: aggregate stats per district/domain — issues resolved this period, average resolution time, partner performance — no individual citizen data. Turns Session 14's transparency data into something the public/officials can see, not just the filer. Added at frPyP's request after Claude proposed it as a way to actually deliver on "distinguish from MyGate," rather than leaving that as an unimplemented note (see the paragraph below). | Claude's proposal, frPyP confirmed adding it (2026-09-23). |
-| 18 | Co-signing ("me too") on existing issues | Instead of dedup detection only warning/blocking a near-duplicate submission, let a citizen co-sign an existing open issue near them instead of filing a new one. Issues with more co-signers surface higher for the assigned partner(s) — a real prioritization signal, not just a duplicate filter. Depends on dedup detection (old Priority-B, Pass 21) already being live-verified, since this builds directly on that matching logic. | Claude's proposal, frPyP confirmed adding it (2026-09-23). |
+| 16 | UI/accessibility pass | Visual redesign — less plain, fuller layout, more accessible. No functional/data changes. The assistant's call on direction (frPyP: "purely your call"), logged with reasoning when done rather than guessed at silently. | the assistant's call. |
+| 17 | Public accountability dashboard | New, unauthenticated public page: aggregate stats per district/domain — issues resolved this period, average resolution time, partner performance — no individual citizen data. Turns Session 14's transparency data into something the public/officials can see, not just the filer. Added at frPyP's request after the assistant proposed it as a way to actually deliver on "distinguish from MyGate," rather than leaving that as an unimplemented note (see the paragraph below). | the assistant's proposal, frPyP confirmed adding it (2026-09-23). |
+| 18 | Co-signing ("me too") on existing issues | Instead of dedup detection only warning/blocking a near-duplicate submission, let a citizen co-sign an existing open issue near them instead of filing a new one. Issues with more co-signers surface higher for the assigned partner(s) — a real prioritization signal, not just a duplicate filter. Depends on dedup detection (old Priority-B, Pass 21) already being live-verified, since this builds directly on that matching logic. | the assistant's proposal, frPyP confirmed adding it (2026-09-23). |
 
 Sessions 11–15 all touch schema — every one of them needs a real
 `prisma migrate` + live-DB verification pass on a real machine, same
@@ -183,7 +183,7 @@ government scale, not building/society management. Sessions 14
 (transparency) and 15 (multi-domain routing) are the two Phase 2 items
 that most reinforce that distinction in practice. **Update, 2026-09-23:**
 frPyP pushed back on leaving this as just a structural side-effect, so
-Claude proposed three concrete features and frPyP picked two to actually
+The assistant proposed three concrete features and frPyP picked two to actually
 build — Sessions 17 (public accountability dashboard) and 18
 (co-signing/"me too" on existing issues) above. A third idea (SLA-based
 auto-escalation on unactioned issues) was proposed but not picked; not
@@ -489,13 +489,13 @@ district changes, `domains` (Session 15), partner status notes
   negotiable" design (specifically: single-partner auto-routing),
   the new version wins — explicit call, not silently decided. Two
   items (citizen editing's exact mechanics, and UI direction) were
-  explicitly left to Claude's judgment by frPyP; reasoning for both
+  explicitly left to the assistant's judgment by frPyP; reasoning for both
   logged in §5a.
 - 2026-09-23 — frPyP (via chat) — Added Sessions 17 (public
   accountability dashboard) and 18 (co-signing/"me too" on existing
   issues) to §5a, plus their schema notes in §6a (`ChallengeCosign`
   table) and endpoints in §8a (`GET /public/stats`, `POST
-  /challenges/:id/cosign`). These came from Claude proposing three
+  /challenges/:id/cosign`). These came from the assistant proposing three
   concrete "what makes this different from MyGate" features after
   frPyP pushed back on that being left as unimplemented context;
   frPyP picked two of the three. A third (SLA-based auto-escalation)

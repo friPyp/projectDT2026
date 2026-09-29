@@ -115,14 +115,14 @@ next and is now safe to build directly on `main`**, migration and all.
 
 ### Pass 30 — 2026-09-27 — frPyP — Vendored a Prisma engine binary into the repo (explicit exception, not normal practice)
 Did:
-- frPyP explicitly directed Claude to commit a compiled Prisma query
+- frPyP explicitly directed the assistant to commit a compiled Prisma query
   engine binary (`libquery_engine.so.node`, Debian/OpenSSL 3.0.x build)
-  into the repo, so Claude's sandbox — which has no network access to
+  into the repo, so the assistant's sandbox — which has no network access to
   `binaries.prisma.sh` — can run `prisma generate` / `tsc -b` itself as
   a sanity check on schema changes across chat sessions (the sandbox's
   filesystem doesn't persist between conversations, so nothing survives
   there on its own).
-- Claude flagged this twice before doing it (repo size, platform-
+- The assistant flagged this twice before doing it (repo size, platform-
   specificity, not standard practice for a Prisma project) — frPyP
   confirmed as project head this is a college project, not production,
   and the trade-off is acceptable. Proceeding on that explicit
@@ -138,7 +138,7 @@ Files touched: `tools/prisma-engine-cache/debian-openssl-3.0.x/libquery_engine.s
 `tools/prisma-engine-cache/README.md` (new), `PROJECT_STATUS.md`.
 Decisions made: this file has zero effect on the running app — Render,
 Vercel, and every teammate's own machine still get Prisma's engine the
-normal automatic way. It's read only by Claude, only in its own
+normal automatic way. It's read only by the assistant, only in its own
 sandbox, only as an optional compile check. If this ever confuses a
 future contributor, the README in that folder explains it and this
 entry does too.
@@ -148,9 +148,9 @@ Bugs found/fixed: none.
 Left in a broken/incomplete state: nothing.
 Anything the next person needs to know: don't remove this thinking it's
 stray build output — it's intentional (see the README). If Prisma gets
-upgraded and this starts causing Claude's checks to fail or mismatch,
+upgraded and this starts causing the assistant's checks to fail or mismatch,
 refresh it per the README's instructions rather than deleting it
-outright, or just tell Claude and it'll ask for a fresh copy.
+outright, or just tell the assistant and it'll ask for a fresh copy.
 
 ---
 
@@ -644,7 +644,7 @@ Did:
 Files touched: none (all troubleshooting was against `.env`/environment
   config on the Termux device, never committed — `.env` is gitignored).
 Decisions made: frPyP asked whether Session 2 could start in parallel (a
-  different Claude session) while this is unresolved. Answered honestly:
+  different assistant session) while this is unresolved. Answered honestly:
   per the project's own rule against building ahead of the current phase,
   Session 1 isn't formally closed yet. The practical middle ground offered:
   Session 2's auth *code* (register/login/JWT) can reasonably be written
@@ -714,7 +714,7 @@ Files touched: none (all verification was against the live database and a
   Termux-local test server; nothing committed to the repo needed changing
   once the SQL fix above was applied directly in Neon's editor, not this
   repo).
-Decisions made: frPyP + Claude agreed Session 1 is done despite the
+Decisions made: frPyP + the assistant agreed Session 1 is done despite the
   health-check never passing *on this phone specifically* — the underlying
   thing it was meant to verify (schema/migration/data are real and
   reachable) has been proven true via other means (Neon's own SQL editor).
@@ -1837,7 +1837,7 @@ rule.
 Files touched: `PROJECT_REFERENCE.md` only.
 Decisions made:
 - Citizen challenge-editing mechanics (Session 13) and UI redesign
-  direction (Session 16) were both explicitly left to Claude's
+  direction (Session 16) were both explicitly left to the assistant's
   judgment by frPyP ("do what you feel", "purely your call"). Editing
   was scoped as in-place edit + an append-only `ChallengeEditLog` for
   auditability, blocked once a challenge is `COMPLETED`, and does
@@ -2476,7 +2476,7 @@ machine (Pass 36 has the exact steps).
 
 **All 9 Priority-A sessions are closed (Pass 18). The project is now
 working through Priority-B (§2), by explicit request (frPyP picked all
-four non-mobile-polish items) — not started on Claude's own
+four non-mobile-polish items) — not started on the assistant's own
 initiative.**
 
 Status of the four picked items:
