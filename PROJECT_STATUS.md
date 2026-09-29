@@ -120,18 +120,18 @@ next and is now safe to build directly on `main`**, migration and all.
 
 ### Pass 30 — 2026-09-27 — frPyP — Vendored a Prisma engine binary into the repo (explicit exception, not normal practice)
 Did:
-- frPyP explicitly directed the assistant to commit a compiled Prisma query
+- frPyP explicitly decided to commit a compiled Prisma query
   engine binary (`libquery_engine.so.node`, Debian/OpenSSL 3.0.x build)
-  into the repo, so the assistant's sandbox — which has no network access to
-  `binaries.prisma.sh` — can run `prisma generate` / `tsc -b` itself as
-  a sanity check on schema changes across chat sessions (the sandbox's
-  filesystem doesn't persist between conversations, so nothing survives
+  into the repo, so a sandboxed environment — one with no network access to
+  `binaries.prisma.sh` — can still run `prisma generate` / `tsc -b` as
+  a sanity check on schema changes across sessions (such sandboxes'
+  filesystems don't persist between conversations, so nothing survives
   there on its own).
-- The assistant flagged this twice before doing it (repo size, platform-
+- The downsides were flagged twice beforehand (repo size, platform-
   specificity, not standard practice for a Prisma project) — frPyP
   confirmed as project head this is a college project, not production,
   and the trade-off is acceptable. Proceeding on that explicit
-  direction.
+  decision.
 - Added `tools/prisma-engine-cache/` — kept deliberately separate from
   `apps/`, isolated from application code. Contains the binary, its
   `.sha256`, and a README explaining what it is, why it's there, and
@@ -143,8 +143,8 @@ Files touched: `tools/prisma-engine-cache/debian-openssl-3.0.x/libquery_engine.s
 `tools/prisma-engine-cache/README.md` (new), `PROJECT_STATUS.md`.
 Decisions made: this file has zero effect on the running app — Render,
 Vercel, and every teammate's own machine still get Prisma's engine the
-normal automatic way. It's read only by the assistant, only in its own
-sandbox, only as an optional compile check. If this ever confuses a
+normal automatic way. It's only used by such sandboxes, only as an
+optional compile check. If this ever confuses a
 future contributor, the README in that folder explains it and this
 entry does too.
 Deviations from spec: not applicable — this is tooling, not a Phase 2
@@ -153,9 +153,9 @@ Bugs found/fixed: none.
 Left in a broken/incomplete state: nothing.
 Anything the next person needs to know: don't remove this thinking it's
 stray build output — it's intentional (see the README). If Prisma gets
-upgraded and this starts causing the assistant's checks to fail or mismatch,
+upgraded and this starts causing those checks to fail or mismatch,
 refresh it per the README's instructions rather than deleting it
-outright, or just tell the assistant and it'll ask for a fresh copy.
+outright.
 
 ---
 
@@ -331,8 +331,7 @@ Deviations from spec: `domains` removed from §8a's `PATCH
 /challenges/:id` line (it is Session 15's; logged in REFERENCE §9).
 `GET /challenges/:id/edits` added beyond §8a (logged in §9).
 Bugs found/fixed: none in code. Housekeeping: reworded four earlier
-lines in this file and one code comment that named the assistant, to
-follow the rule that only frPyP's name appears in the repo.
+lines in this file and one code comment (wording only).
 Left in a broken/incomplete state: nothing.
 Anything the next person needs to know:
 - **Start at REFERENCE §8a "Session 13 — decided design."** Don't
@@ -450,10 +449,10 @@ Anything the next person needs to know:
 
 ### Pass 37 — 2026-09-29 — frPyP — Wording cleanup: tool-specific naming removed from all repo docs
 Did:
-- At frPyP's explicit request, replaced every mention of the AI tool's
-  name in `TEAM_WORKFLOW.md`, `PROJECT_REFERENCE.md`, `PROJECT_STATUS.md`
-  and `tools/prisma-engine-cache/README.md` with neutral wording ("the
-  assistant"). Meaning is unchanged; this is the one deliberate edit to
+- At frPyP's explicit request, replaced tool-specific naming in
+  `TEAM_WORKFLOW.md`, `PROJECT_REFERENCE.md`, `PROJECT_STATUS.md` and
+  `tools/prisma-engine-cache/README.md` with neutral wording (a later
+  pass, 39, removed that wording too). Meaning is unchanged; this is the one deliberate edit to
   old history text, made on frPyP's instruction, overriding the usual
   never-edit-old-entries habit for wording only.
 - frPyP ran `pnpm exec prisma migrate resolve --applied
@@ -501,6 +500,24 @@ Live checks for frPyP: (1) admin: open "Reassign to..." on a challenge —
 its current partner is not listed; (2) partner dashboard shows no team
 box, and "Move to ..." still works; (3) optional, via API only (the UI no
 longer exposes it): a second identical team-name save returns 400.
+
+---
+
+### Pass 39 — 2026-09-29 — frPyP — Removed all remaining references to the tooling used to write code
+Did:
+- At frPyP's request, removed every reference to the coding tool /
+  assistant from `TEAM_WORKFLOW.md`, `PROJECT_REFERENCE.md`,
+  `PROJECT_STATUS.md` and `tools/prisma-engine-cache/README.md`. Sentences
+  that credited it (proposals, "left to its judgment", "flagged this") were
+  reworded to say what was decided and by whom (frPyP), or made neutral.
+  `TEAM_WORKFLOW.md` now talks about "chat sessions" instead of a named
+  helper. Only project members appear as people in these files (frPyP,
+  Preza, devansh4281 — the repo's other contributors).
+- Wording only: no decisions, dates or technical facts were changed.
+Not changed: earlier git commit messages (would need a force-push, not
+being done), and the word "sandbox" where it describes the offline build
+environment.
+Left in a broken/incomplete state: nothing.
 
 ---
 
@@ -705,7 +722,7 @@ Did:
 Files touched: none (all troubleshooting was against `.env`/environment
   config on the Termux device, never committed — `.env` is gitignored).
 Decisions made: frPyP asked whether Session 2 could start in parallel (a
-  different assistant session) while this is unresolved. Answered honestly:
+  separate, parallel session) while this is unresolved. Answered honestly:
   per the project's own rule against building ahead of the current phase,
   Session 1 isn't formally closed yet. The practical middle ground offered:
   Session 2's auth *code* (register/login/JWT) can reasonably be written
@@ -775,7 +792,7 @@ Files touched: none (all verification was against the live database and a
   Termux-local test server; nothing committed to the repo needed changing
   once the SQL fix above was applied directly in Neon's editor, not this
   repo).
-Decisions made: frPyP + the assistant agreed Session 1 is done despite the
+Decisions made: frPyP agreed Session 1 is done despite the
   health-check never passing *on this phone specifically* — the underlying
   thing it was meant to verify (schema/migration/data are real and
   reachable) has been proven true via other means (Neon's own SQL editor).
@@ -1880,7 +1897,7 @@ requirements from frPyP before resuming §6 below or assuming the
 existing schema/contract/architecture holds** — that's the entire
 point of this pass.
 
-### Pass 23 — 2026-09-23 — frPyP (via chat) — Phase 2 requirements gathered and locked into PROJECT_REFERENCE.md
+### Pass 23 — 2026-09-23 — frPyP — Phase 2 requirements gathered and locked into PROJECT_REFERENCE.md
 Branch/commit: main (direct push)
 Did: Got the new requirements referenced in the Pass 22 handoff note
 directly from frPyP in chat. Broke them into six new sessions (10–16)
@@ -1898,8 +1915,8 @@ rule.
 Files touched: `PROJECT_REFERENCE.md` only.
 Decisions made:
 - Citizen challenge-editing mechanics (Session 13) and UI redesign
-  direction (Session 16) were both explicitly left to the assistant's
-  judgment by frPyP ("do what you feel", "purely your call"). Editing
+  direction (Session 16) were both explicitly left open
+  by frPyP ("do what you feel", "purely your call"). Editing
   was scoped as in-place edit + an append-only `ChallengeEditLog` for
   auditability, blocked once a challenge is `COMPLETED`, and does
   **not** re-trigger categorization/routing (would undermine a
@@ -1925,7 +1942,7 @@ REFERENCE §5a/§6a/§8a before starting any Phase 2 session — that's now
 the source of truth for scope, not the original §2/§6/§8 text (which
 is kept for history).
 
-### Pass 24 — 2026-09-23 — frPyP (via chat) — Session 10 (SPA routing fix) done, not yet live-verified
+### Pass 24 — 2026-09-23 — frPyP — Session 10 (SPA routing fix) done, not yet live-verified
 Branch/commit: main (direct push)
 Did: Diagnosed the "page not found" bug frPyP reported: Vercel was
 serving the static frontend build with no fallback route, so a hard
@@ -1956,7 +1973,7 @@ before calling Session 10 closed. Session 11 (extra location fields)
 is next; see REFERENCE §5a/§6a — that one needs a real Prisma migrate
 against Neon, same constraint as every schema-touching pass before it.
 
-### Pass 25 — 2026-09-23 — frPyP (via chat) — Correction: Pass 23/24's rewrite of this file deleted historical text instead of appending
+### Pass 25 — 2026-09-23 — frPyP — Correction: Pass 23/24's rewrite of this file deleted historical text instead of appending
 Branch/commit: main (direct push)
 Did: frPyP flagged that this file must never have content deleted,
 only appended — and Pass 23/24's edits to the top handoff note, §4,
@@ -2537,8 +2554,7 @@ machine (Pass 36 has the exact steps).
 
 **All 9 Priority-A sessions are closed (Pass 18). The project is now
 working through Priority-B (§2), by explicit request (frPyP picked all
-four non-mobile-polish items) — not started on the assistant's own
-initiative.**
+four non-mobile-polish items) — not started unprompted.**
 
 Status of the four picked items:
 - **Richer error states — done, verified live (Pass 19).**

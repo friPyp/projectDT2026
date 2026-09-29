@@ -7,12 +7,11 @@ This folder holds one file that isn't part of the application:
 engine binary, plus its `.sha256` checksum.
 
 Normally `npx prisma generate` downloads this automatically from
-`binaries.prisma.sh`. It's committed here **only** because the assistant's
-sandbox environment (used to help build this project across chat
-sessions) has no network access to that domain, so it can't fetch its
-own copy. Keeping one here lets the assistant run `prisma generate` and
-`tsc -b` on its side to sanity-check schema changes compile, without
-needing a live Neon connection.
+`binaries.prisma.sh`. It's committed here **only** because some sandboxed
+environments used to build this project across sessions have no network
+access to that domain, so they can't fetch their own copy. Keeping one
+here lets them run `prisma generate` and `tsc -b` to sanity-check that
+schema changes compile, without needing a live Neon connection.
 
 **This is a deliberate exception, made by frPyP (project head), aware
 that:**
@@ -29,8 +28,8 @@ across platforms.
 **Nothing about the running app depends on this file.** Render, Vercel,
 and every teammate's own machine still get their engine binary the
 normal way, via `prisma generate`'s automatic download. This file is
-read only by the assistant, only inside its own sandbox, and only as an
-optional sanity check.
+only used by such sandboxed environments, and only as an optional sanity
+check.
 
 ## How to tell if it's gone stale
 
@@ -84,10 +83,10 @@ sha256sum libquery_engine.so.node   # compare by eye against the .sha256 file
 ```
 
 Then replace both files in this folder and update the hash quoted above
-in this README, and give the new file to the assistant in whatever chat needs
-it (the assistant's sandbox resets between conversations, so this repo copy is
-the only way the binary carries over — the assistant will re-copy it into its
-own scratch space each session, it doesn't run directly from here).
+in this README, and hand the new file to whichever session needs it (those
+sandboxes reset between conversations, so this repo copy is the only way
+the binary carries over — it gets re-copied into scratch space each
+session, it doesn't run directly from here).
 
 ## Current file
 
