@@ -1,14 +1,20 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getMyChallenges,
   getNotifications,
   markNotificationRead,
   getPartnerContacts,
+  updateChallenge,
+  ApiError,
   type Notification,
+  type Challenge,
+  type Category,
+  type UpdateChallengeInput,
 } from "../lib/api";
-import { CATEGORY_LABELS, STATUS_LABELS, STATUS_STYLES } from "../lib/challengeLabels";
+import { CATEGORY_LABELS, CATEGORY_OPTIONS, STATUS_LABELS, STATUS_STYLES } from "../lib/challengeLabels";
 import AppLayout from "../components/AppLayout";
 import ChallengeEditHistory from "../components/ChallengeEditHistory";
 
@@ -162,6 +168,290 @@ function PartnerContactsPanel({ partnerId }: { partnerId: string }) {
   );
 }
 
+// Phase 2 Session 13: inline edit form inside the challenge card
+// (PROJECT_REFERENCE.md §8a "Session 13 — decided design"). District is
+// deliberately not editable. Only changed fields are sent; Save stays
+// disabled until something actually differs.
+interface EditFormValues {
+  title: string;
+  description: string;
+  category: Category;
+  state: string;
+  city: string;
+  locality: string;
+  address: string;
+}
+
+const EDIT_FIELDS = ["title", "description", "category", "state", "city", "locality", "address"] as const;
+
+const EDIT_LOCATION_FIELDS: { name: "state" | "city" | "locality" | "address"; label: string; max: number }[] = [
+  { name: "state", label: "State (optional)", max: 100 },
+  { name: "city", label: "City (optional)", max: 100 },
+  { name: "locality", label: "Locality / area (optional)", max: 100 },
+  { name: "address", label: "Address or landmark (optional)", max: 300 },
+];
+
+function EditChallengeForm({
+  challenge,
+  onClose,
+  onSaved,
+  onCompleted,
+}: {
+  challenge: Challenge;
+  onClose: () => void;
+  onSaved: () => void;
+  onCompleted: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [serverError, setServerError] = useState<string | null>(null);
+  const idp = `edit-${challenge.id}`;
+
+  const original: EditFormValues = {
+    title: challenge.title,
+    description: challenge.description,
+    category: challenge.category,
+    state: challenge.state ?? "",
+    city: challenge.city ?? "",
+    locality: challenge.locality ?? "",
+    address: challenge.address ?? "",
+  };
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setFocus,
+    formState: { errors },
+  } = useForm<EditFormValues>({ defaultValues: original });
+
+  // Move focus to the first field when the form opens.
+  useEffect(() => {
+    setFocus("title");
+  }, [setFocus]);
+
+  const values = watch();
+  const changed: UpdateChallengeInput = {};
+  for (const f of EDIT_FIELDS) {
+    if ((values[f] ?? "").trim() !== original[f].trim()) {
+      (changed as Record<string, string>)[f] = (values[f] ?? "").trim();
+    }
+  }
+  const hasChanges = Object.keys(changed).length > 0;
+
+  const mutation = useMutation({
+    mutationFn: (data: UpdateChallengeInput) => updateChallenge(challenge.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["myChallenges"] });
+      queryClient.invalidateQueries({ queryKey: ["challengeEdits", challenge.id] });
+      onSaved();
+    },
+    onError: (err) => {
+      if (err instanceof ApiError && err.code === "CHALLENGE_COMPLETED") {
+        // Refetch so the Edit button disappears, then close the form.
+        queryClient.invalidateQueries({ queryKey: ["myChallenges"] });
+        onCompleted();
+        return;
+      }
+      setServerError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
+    },
+  });
+
+  const onSubmit = () => {
+    if (!hasChanges) return;
+    setServerError(null);
+    mutation.mutate(changed);
+  };
+
+  const inputClass =
+    "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400";
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+      <div>
+        <label htmlFor={`${idp}-title`} className="block text-sm font-medium text-slate-700 mb-1">
+          Title
+        </label>
+        <input
+          id={`${idp}-title`}
+          type="text"
+          {...register("title", {
+            validate: (v) => v.trim().length > 0 || "Title is required.",
+            maxLength: { value: 200, message: "Title is too long." },
+          })}
+          aria-invalid={errors.title ? "true" : "false"}
+          aria-describedby={errors.title ? `${idp}-title-error` : undefined}
+          className={inputClass}
+        />
+        {errors.title && (
+          <p id={`${idp}-title-error`} className="text-xs text-red-600 mt-1">
+            {errors.title.message}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label htmlFor={`${idp}-description`} className="block text-sm font-medium text-slate-700 mb-1">
+          Description
+        </label>
+        <textarea
+          id={`${idp}-description`}
+          rows={5}
+          {...register("description", {
+            validate: (v) => v.trim().length > 0 || "Description is required.",
+          })}
+          aria-invalid={errors.description ? "true" : "false"}
+          aria-describedby={errors.description ? `${idp}-description-error` : undefined}
+          className={inputClass}
+        />
+        {errors.description && (
+          <p id={`${idp}-description-error`} className="text-xs text-red-600 mt-1">
+            {errors.description.message}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label htmlFor={`${idp}-category`} className="block text-sm font-medium text-slate-700 mb-1">
+          Category
+        </label>
+        <select
+          id={`${idp}-category`}
+          {...register("category")}
+          aria-describedby={`${idp}-category-help`}
+          className={`${inputClass} bg-white`}
+        >
+          {CATEGORY_OPTIONS.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <p id={`${idp}-category-help`} className="text-xs text-slate-500 mt-1">
+          Changing the category won't move your challenge to a different partner.
+        </p>
+      </div>
+
+      {EDIT_LOCATION_FIELDS.map(({ name, label, max }) => (
+        <div key={name}>
+          <label htmlFor={`${idp}-${name}`} className="block text-sm font-medium text-slate-700 mb-1">
+            {label}
+          </label>
+          <input
+            id={`${idp}-${name}`}
+            type="text"
+            {...register(name, { maxLength: { value: max, message: `Must be ${max} characters or fewer.` } })}
+            aria-invalid={errors[name] ? "true" : "false"}
+            aria-describedby={errors[name] ? `${idp}-${name}-error` : undefined}
+            className={inputClass}
+          />
+          {errors[name] && (
+            <p id={`${idp}-${name}-error`} className="text-xs text-red-600 mt-1">
+              {errors[name]?.message}
+            </p>
+          )}
+        </div>
+      ))}
+
+      {serverError && (
+        <p role="alert" className="text-sm text-red-600">
+          {serverError}
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={!hasChanges || mutation.isPending}
+          className="rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-800 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400"
+        >
+          {mutation.isPending ? "Saving..." : "Save changes"}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={mutation.isPending}
+          className="rounded-lg bg-slate-100 text-slate-900 text-sm font-medium px-4 py-2 hover:bg-slate-200 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// Phase 2 Session 13: one challenge card. The JSX inside is the same
+// card that used to be inlined in the list below; it moved into its own
+// component only so each card can hold its own "editing" state.
+function ChallengeCard({ challenge }: { challenge: Challenge }) {
+  const [editing, setEditing] = useState(false);
+  const [savedMessage, setSavedMessage] = useState("");
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const canEdit = challenge.status !== "COMPLETED";
+
+  const closeForm = () => {
+    setEditing(false);
+    // Return focus to the Edit button once it is back on screen.
+    setTimeout(() => editButtonRef.current?.focus(), 0);
+  };
+
+  useEffect(() => {
+    if (!savedMessage) return;
+    const t = setTimeout(() => setSavedMessage(""), 4000);
+    return () => clearTimeout(t);
+  }, [savedMessage]);
+
+  return (
+    <li className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="font-medium text-slate-900 truncate">{challenge.title}</h2>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {CATEGORY_LABELS[challenge.category]} · {challenge.district}
+          </p>
+          <p className="text-sm text-slate-600 mt-2 line-clamp-2">{challenge.description}</p>
+        </div>
+        <span
+          className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLES[challenge.status]}`}
+        >
+          {STATUS_LABELS[challenge.status]}
+        </span>
+      </div>
+      {challenge.assignedPartnerId && <PartnerContactsPanel partnerId={challenge.assignedPartnerId} />}
+      <ChallengeEditHistory challengeId={challenge.id} />
+
+      <p aria-live="polite" className="text-sm text-green-700 mt-2 empty:hidden">
+        {savedMessage}
+      </p>
+
+      {canEdit && !editing && (
+        <button
+          ref={editButtonRef}
+          type="button"
+          onClick={() => setEditing(true)}
+          className="mt-3 rounded-lg bg-slate-100 text-slate-900 text-sm font-medium px-3 py-1.5 hover:bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400"
+        >
+          Edit
+        </button>
+      )}
+
+      {canEdit && editing && (
+        <EditChallengeForm
+          challenge={challenge}
+          onClose={closeForm}
+          onSaved={() => {
+            setSavedMessage("Saved");
+            closeForm();
+          }}
+          onCompleted={() => {
+            setSavedMessage("");
+            setEditing(false);
+          }}
+        />
+      )}
+    </li>
+  );
+}
+
 export default function DashboardPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["myChallenges"],
@@ -220,26 +510,7 @@ export default function DashboardPage() {
         {data && data.length > 0 && (
           <ul className="space-y-3">
             {data.map((challenge) => (
-              <li key={challenge.id} className="bg-white rounded-xl border border-slate-200 p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <h2 className="font-medium text-slate-900 truncate">{challenge.title}</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                      {CATEGORY_LABELS[challenge.category]} · {challenge.district}
-                    </p>
-                    <p className="text-sm text-slate-600 mt-2 line-clamp-2">{challenge.description}</p>
-                  </div>
-                  <span
-                    className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLES[challenge.status]}`}
-                  >
-                    {STATUS_LABELS[challenge.status]}
-                  </span>
-                </div>
-                {challenge.assignedPartnerId && (
-                  <PartnerContactsPanel partnerId={challenge.assignedPartnerId} />
-                )}
-                <ChallengeEditHistory challengeId={challenge.id} />
-              </li>
+              <ChallengeCard key={challenge.id} challenge={challenge} />
             ))}
           </ul>
         )}
