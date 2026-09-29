@@ -29,6 +29,11 @@
 > Priority-B) still just needs its real-machine verification pass
 > whenever someone's next on a real machine — unaffected by Phase 2.
 
+> 📌 **2026-09-29 update, frPyP:** Session 13 (citizen edits a submitted
+> challenge) is **built and pushed to `main`; the Neon table is applied;
+> live verification is still pending.** See Pass 36 for the checklist and
+> the one command still to run. Session 14 is next once it is verified.
+
 > 📌 **2026-09-24 update, frPyP:** Phase 2 Session 11 (location fields) is
 > **done and merged to `main`.** Neon columns added, real-machine
 > `prisma generate` + `tsc -b` passed, live submit test confirmed values
@@ -346,6 +351,95 @@ Anything the next person needs to know:
 - Keep static route paths above `/:id` ones (Pass 33 bug).
 - Session 14 onward: not started; don't begin until Session 13 is
   verified live.
+
+---
+
+### Pass 36 — 2026-09-29 — frPyP — Session 13 (citizen edits a submitted challenge) built and pushed; needs live verification
+Did:
+- Read the repo docs and full commit history first, pulled latest (clean),
+  then built Session 13 exactly as written in REFERENCE §8a "Session 13 —
+  decided design". Pushed in four commits so nothing was lost mid-session:
+  1. `4abc737` — `ChallengeEditLog` model in `schema.prisma` + hand-written
+     migration `20260928010000_add_challenge_edit_log` (table
+     `challenge_edit_logs`, JSONB `changedFields`, index on `challengeId`,
+     FK `ON DELETE RESTRICT ON UPDATE CASCADE`). Pushed alone, before any
+     code used the table.
+  2. `3f26006` — backend: `PATCH /challenges/:id` and
+     `GET /challenges/:id/edits`, strict zod `updateChallengeSchema`, new
+     error code `CHALLENGE_COMPLETED` (409).
+  3. `06a2475` — frontend API client + shared `ChallengeEditHistory`
+     component, shown on the citizen, partner and admin views.
+  4. `9dfba87` — citizen dashboard: inline edit form in each card.
+- frPyP pasted the migration SQL into Neon's SQL editor and confirmed it
+  ran, before the backend/frontend code was pushed (the "migration first,
+  then dependent code" rule).
+- Backend behaviour, as designed: editable fields are title, description,
+  category, state, city, locality, address (never district); body must be
+  a non-empty subset, any other key is `VALIDATION_ERROR`; blank location
+  fields become null; fields that did not actually change are dropped and
+  a fully no-op edit returns 200 with the current challenge, writes no log
+  row and does not touch `updatedAt`; otherwise the challenge update and
+  one log row are written in a single `prisma.$transaction`; an edit never
+  re-categorizes, re-routes, changes status, notifies or re-runs dedup;
+  404 `CHALLENGE_NOT_FOUND`, 403 `FORBIDDEN` (not the owner), 409
+  `CHALLENGE_COMPLETED`. `GET /challenges/:id/edits` is newest-first for
+  the owning citizen, the assigned partner, or any admin.
+- Frontend behaviour, as designed: "Edit" button on each citizen card,
+  hidden when COMPLETED; inline form prefilled with current values,
+  react-hook-form (already in the project), helper text under Category
+  ("Changing the category won't move your challenge to a different
+  partner."); only changed fields are sent; Save disabled until something
+  differs and while pending; Cancel discards; on success the form closes,
+  `["myChallenges"]` and the edit-history query are invalidated and a
+  polite "Saved" message shows; errors show inline with `role="alert"`;
+  on `CHALLENGE_COMPLETED` the list refetches and the form closes; focus
+  moves to the first field on open and back to Edit on close. The history
+  panel renders nothing for never-edited challenges, otherwise "Edited N×
+  · last <date>", expandable, newest first, "Field: before → after"
+  lines, "(blank)" for empty, long text truncated at 80 characters.
+- Card markup on the citizen dashboard moved into a `ChallengeCard`
+  component so each card can hold its own edit state; the card's content
+  and behaviour are otherwise unchanged.
+Tested (in this sandbox only): Prisma schema validates; `prisma generate`
+and backend `tsc --noEmit` pass; frontend `tsc -b --noEmit` and
+`vite build` pass; the PATCH zod schema was exercised directly (empty body,
+`district`, `domains`, blank title, bad category, blank/null location,
+omitted fields staying omitted, over-length address all behave as
+specified). **Not tested:** anything that touches the live database or the
+running app — this sandbox cannot reach Neon.
+Files touched: `apps/backend/prisma/schema.prisma`, new migration folder
+`20260928010000_add_challenge_edit_log`, `apps/backend/src/routes/challenges.ts`,
+`apps/backend/src/validation/challenges.ts`, `apps/backend/src/utils/errors.ts`,
+`apps/frontend/src/lib/api.ts`, new
+`apps/frontend/src/components/ChallengeEditHistory.tsx`,
+`apps/frontend/src/pages/{DashboardPage,PartnerDashboardPage,AdminDashboardPage}.tsx`,
+`PROJECT_STATUS.md`, `PROJECT_REFERENCE.md`.
+Deviations from spec: none. Nothing from Sessions 14–18 was started.
+Bugs found/fixed: none in existing code.
+Left in a broken/incomplete state: nothing known. Session 13 is written
+but not verified live.
+Anything the next person needs to know:
+- **frPyP still needs to run, on a real machine, from `apps/backend`:**
+  `pnpm exec prisma migrate resolve --applied 20260928010000_add_challenge_edit_log`
+  (a bare `prisma` command is not on the PATH — it has to go through
+  `pnpm exec`, and needs `DATABASE_URL` in `apps/backend/.env`). The table
+  already exists in Neon, so this only records it as applied.
+- Also `prisma generate` and a restart/redeploy of the backend so the new
+  client is in use.
+- **Live checks to do, then log as their own pass:** (1) as a citizen,
+  edit a non-completed challenge's title and category — the card updates,
+  "Saved" appears, "Edited 1× · last …" appears and expands to show the
+  before → after lines; (2) press Save with no changes — button is
+  disabled; (3) clear a location field — it stores NULL
+  (`SELECT state, city FROM challenges ...`) and shows "(blank)" in
+  history; (4) confirm one `challenge_edit_logs` row per save and none for
+  a no-op; (5) the assigned partner and the admin see the same history on
+  their cards; (6) a COMPLETED challenge shows no Edit button, and a direct
+  `PATCH` on it returns 409 `CHALLENGE_COMPLETED`; (7) another citizen's
+  challenge id returns 403; (8) the edit did not change the assigned
+  partner or status.
+- Next after Session 13 is verified: Session 14 (partner status-note log,
+  REFERENCE §5a). Session 15 (multi-partner) stays last of the schema work.
 
 ---
 
@@ -1930,6 +2024,11 @@ closed.** Session 13 is next; nothing from 13-16 has been started.
 and written down (REFERENCE §8a, "Session 13 — decided design"). Still
 not built.
 
+**Update, 2026-09-29 (Pass 36):** Session 13 is **built and pushed**
+(schema + migration, backend routes, frontend edit form and history
+panel). The `challenge_edit_logs` table is applied in Neon. **Awaiting
+live verification** (checklist in Pass 36). Sessions 14–18 not started.
+
 ## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -2033,6 +2132,18 @@ people editing the same module in the same day is how things get lost.
   `src/validation/auth.ts`, `src/validation/challenges.ts`,
   `src/lib/categorize.ts`, `src/lib/routing.ts` (both Pass 9),
   `src/routes/notifications.ts`, `src/lib/notify.ts` (both Pass 12)
+
+### Session 13 additions (Pass 36, written, not yet live-verified)
+- Backend: `PATCH /api/v1/challenges/:id`, `GET /api/v1/challenges/:id/edits`,
+  `updateChallengeSchema` in `src/validation/challenges.ts`,
+  `CHALLENGE_COMPLETED` in `src/utils/errors.ts`.
+- Database: `challenge_edit_logs` table (`ChallengeEditLog` model,
+  migration `20260928010000_add_challenge_edit_log`), applied in Neon by
+  hand.
+- Frontend: `updateChallenge` / `getChallengeEdits` in `src/lib/api.ts`,
+  `src/components/ChallengeEditHistory.tsx` (shared by the citizen,
+  partner and admin views), inline `EditChallengeForm` and
+  `ChallengeCard` in `src/pages/DashboardPage.tsx`.
 
 ### Database
 - Prisma schema written: **Yes** (`apps/backend/prisma/schema.prisma`)
@@ -2236,6 +2347,12 @@ blockers remain.**
 `main`; the `partner_contacts` table still needs applying in Neon and
 the feature needs a live check. Until then the new contact UI shows
 load errors (nothing else is affected).
+
+**Update, 2026-09-29 (Pass 36):** Session 13 code is on `main` and the
+`challenge_edit_logs` table is applied in Neon. In progress: the live
+verification, plus `prisma migrate resolve --applied
+20260928010000_add_challenge_edit_log` and `prisma generate` on a real
+machine (Pass 36 has the exact steps).
 
 ---
 
@@ -2467,6 +2584,15 @@ section are kept for history.**
 
 ---
 
+**Update, 2026-09-29 (Pass 36): the current next task is to live-verify
+Session 13 using the checklist in Pass 36 (after running the `migrate
+resolve` command noted there), log the result as its own pass, and only
+then start Session 14. Session 13 itself is built; do not rebuild it.
+The Pass 35 line above is superseded on this point and kept for
+history.**
+
+---
+
 ## 7. Key decisions / deviations from original spec (cumulative — never delete)
 
 - Auto-routing on submission instead of a manual admin review/validation
@@ -2660,6 +2786,13 @@ Session 9 (deploy) closed out the project (Pass 18) — all 9 sessions
 per PROJECT_REFERENCE.md §5 are complete.
 
 ---
+
+**Session 13 additions (Pass 36, written, not yet live-verified):**
+`PATCH /challenges/:id` (CITIZEN, own challenge; body any non-empty
+subset of `{title, description, category, state, city, locality,
+address}`, strict; 409 `CHALLENGE_COMPLETED` once COMPLETED) and
+`GET /challenges/:id/edits` (citizen own / assigned partner / admin,
+newest first). New error code `CHALLENGE_COMPLETED`.
 
 **Session 12 additions (Pass 31, written, not yet live-verified):**
 `GET /partners/:id/contacts` (any authenticated user),
