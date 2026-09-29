@@ -76,3 +76,38 @@ export const reassignChallengeSchema = z.object({
 });
 
 export type ReassignChallengeInput = z.infer<typeof reassignChallengeSchema>;
+
+// Phase 2 Session 13 (PROJECT_REFERENCE.md §8a, "Session 13 — decided
+// design"): PATCH /challenges/:id body. Any non-empty subset of the
+// editable fields. STRICT: any other key (district, domains, status, ...)
+// is a VALIDATION_ERROR. Unlike optionalText above, an omitted location
+// field stays `undefined` (= "don't touch it"); only a sent blank becomes
+// null (= "clear it").
+function editableLocation(max: number) {
+  return z
+    .string()
+    .trim()
+    .max(max, `Must be ${max} characters or fewer.`)
+    .nullable()
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v ? v : null));
+}
+
+export const updateChallengeSchema = z
+  .object({
+    title: z.string().trim().min(1, "Title is required.").max(200, "Title is too long.").optional(),
+    description: z.string().trim().min(1, "Description is required.").optional(),
+    category: z
+      .enum(CATEGORIES, { errorMap: () => ({ message: "Choose a valid category." }) })
+      .optional(),
+    state: editableLocation(100),
+    city: editableLocation(100),
+    locality: editableLocation(100),
+    address: editableLocation(300),
+  })
+  .strict()
+  .refine((data) => Object.values(data).some((v) => v !== undefined), {
+    message: "Provide at least one field to update.",
+  });
+
+export type UpdateChallengeInput = z.infer<typeof updateChallengeSchema>;

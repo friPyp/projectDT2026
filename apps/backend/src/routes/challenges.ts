@@ -5,6 +5,7 @@ import {
   createChallengeSchema,
   updateTeamSchema,
   updateStatusSchema,
+  updateChallengeSchema,
 } from "../validation/challenges";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { categorize } from "../lib/categorize";
@@ -127,6 +128,97 @@ router.get("/", requireAuth, requireRole("CITIZEN", "PARTNER", "ADMIN"), async (
     orderBy: { createdAt: "desc" },
   });
   res.json(challenges);
+});
+
+// PATCH /challenges/:id — CITIZEN only, own challenge, Phase 2 Session 13
+// (PROJECT_REFERENCE.md §8a "Session 13 — decided design"). In-place edit
+// plus one append-only ChallengeEditLog row, written together in a single
+// transaction so an edit can never exist without its log entry. An edit
+// deliberately does NOT re-categorize, re-route, change status, notify, or
+// re-run dedup. No-op edits (nothing actually differs) write nothing and
+// leave updatedAt alone.
+const EDITABLE_FIELDS = [
+  "title",
+  "description",
+  "category",
+  "state",
+  "city",
+  "locality",
+  "address",
+] as const;
+
+router.patch("/:id", requireAuth, requireRole("CITIZEN"), async (req, res) => {
+  const parsed = updateChallengeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendError(res, 400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid input.");
+  }
+
+  const challenge = await prisma.challenge.findUnique({ where: { id: req.params.id } });
+  if (!challenge) {
+    return sendError(res, 404, "CHALLENGE_NOT_FOUND", "No challenge with that id.");
+  }
+  if (challenge.citizenId !== req.user!.id) {
+    return sendError(res, 403, "FORBIDDEN", "This isn't your challenge.");
+  }
+  if (challenge.status === "COMPLETED") {
+    return sendError(res, 409, "CHALLENGE_COMPLETED", "This challenge is completed and can no longer be edited.");
+  }
+
+  // Keep only the fields that were sent AND actually differ.
+  const data: Record<string, string | null> = {};
+  const changedFields: Record<string, { before: string | null; after: string | null }> = {};
+  for (const field of EDITABLE_FIELDS) {
+    const next = parsed.data[field];
+    if (next === undefined) continue;
+    const before = challenge[field] ?? null;
+    if (next === before) continue;
+    data[field] = next;
+    changedFields[field] = { before, after: next };
+  }
+
+  if (Object.keys(data).length === 0) {
+    return res.json(challenge);
+  }
+
+  const [updated] = await prisma.$transaction([
+    prisma.challenge.update({ where: { id: challenge.id }, data }),
+    prisma.challengeEditLog.create({
+      data: { challengeId: challenge.id, changedFields },
+    }),
+  ]);
+  res.json(updated);
+});
+
+// GET /challenges/:id/edits — added beyond §8a (see §8a Session 13 block,
+// logged in §9): PROJECT_REFERENCE.md §5a promises partners/admin can see
+// what changed, and nothing else exposes the log. CITIZEN (own), PARTNER
+// (only if assigned), ADMIN (any). Newest first.
+router.get("/:id/edits", requireAuth, requireRole("CITIZEN", "PARTNER", "ADMIN"), async (req, res) => {
+  const challenge = await prisma.challenge.findUnique({ where: { id: req.params.id } });
+  if (!challenge) {
+    return sendError(res, 404, "CHALLENGE_NOT_FOUND", "No challenge with that id.");
+  }
+
+  if (req.user!.role === "CITIZEN") {
+    if (challenge.citizenId !== req.user!.id) {
+      return sendError(res, 403, "FORBIDDEN", "This isn't your challenge.");
+    }
+  } else if (req.user!.role === "PARTNER") {
+    const partner = await getPartnerForUser(req.user!.id);
+    if (!partner) {
+      return sendError(res, 403, "FORBIDDEN", "No partner profile linked to this account.");
+    }
+    if (challenge.assignedPartnerId !== partner.id) {
+      return sendError(res, 403, "FORBIDDEN", "This challenge isn't assigned to you.");
+    }
+  }
+
+  const edits = await prisma.challengeEditLog.findMany({
+    where: { challengeId: challenge.id },
+    orderBy: { editedAt: "desc" },
+    select: { id: true, challengeId: true, editedAt: true, changedFields: true },
+  });
+  res.json(edits);
 });
 
 // PATCH /challenges/:id/team — PARTNER only (§8). Sets the plain-text
