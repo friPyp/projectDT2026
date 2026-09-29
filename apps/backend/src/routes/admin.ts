@@ -89,6 +89,13 @@ router.patch(
       return sendError(res, 400, "VALIDATION_ERROR", "That partner doesn't exist.");
     }
 
+    // Added on frPyP's request, 2026-09-29: reassigning to the partner
+    // that already has the challenge is rejected — otherwise it would
+    // needlessly reset status to ASSIGNED, clear the team and re-notify.
+    if (challenge.assignedPartnerId === partnerId) {
+      return sendError(res, 400, "VALIDATION_ERROR", "This challenge is already assigned to that partner.");
+    }
+
     const updated = await prisma.challenge.update({
       where: { id: challenge.id },
       data: { assignedPartnerId: partnerId, status: "ASSIGNED", team: null },
