@@ -10,6 +10,7 @@ import {
 } from "../lib/api";
 import { CATEGORY_LABELS, STATUS_LABELS, STATUS_STYLES } from "../lib/challengeLabels";
 import AppLayout from "../components/AppLayout";
+import ChallengeEditHistory from "../components/ChallengeEditHistory";
 
 // Session 6: citizen-facing notification list — plain fetch-on-load, no
 // polling (per PROJECT_REFERENCE.md §2/§7, nothing here needs real-time).
@@ -237,6 +238,7 @@ export default function DashboardPage() {
                 {challenge.assignedPartnerId && (
                   <PartnerContactsPanel partnerId={challenge.assignedPartnerId} />
                 )}
+                <ChallengeEditHistory challengeId={challenge.id} />
               </li>
             ))}
           </ul>
