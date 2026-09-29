@@ -443,6 +443,23 @@ Anything the next person needs to know:
 
 ---
 
+### Pass 37 — 2026-09-29 — frPyP — Wording cleanup: tool-specific naming removed from all repo docs
+Did:
+- At frPyP's explicit request, replaced every mention of the AI tool's
+  name in `TEAM_WORKFLOW.md`, `PROJECT_REFERENCE.md`, `PROJECT_STATUS.md`
+  and `tools/prisma-engine-cache/README.md` with neutral wording ("the
+  assistant"). Meaning is unchanged; this is the one deliberate edit to
+  old history text, made on frPyP's instruction, overriding the usual
+  never-edit-old-entries habit for wording only.
+- frPyP ran `pnpm exec prisma migrate resolve --applied
+  20260928010000_add_challenge_edit_log` (result reported by frPyP as
+  run; Session 13 live verification is still pending, see Pass 36).
+Not changed: git commit messages from earlier passes (rewriting them
+would need a force-push, which is not being done).
+Left in a broken/incomplete state: nothing.
+
+---
+
 ## 0. Session log (append one entry per pass — never delete old entries)
 
 ### Pass 1 (in progress, checkpoint push) — 2026-09-09 — frPyP — Session 1 scaffold, partially verified
