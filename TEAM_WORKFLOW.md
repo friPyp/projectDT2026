@@ -8,11 +8,12 @@ you do a work session.
 
 ## The 30-second version
 
-We're building an app together using an AI assistant to write the actual code.
-Your job is: open a chat with the assistant, tell it what needs doing, paste in two
-files so it knows the current state of the project, and let it work. The assistant
-will save everything to a shared online project folder (called a **repo**) so
-the other two people always see the latest version.
+We're building an app together, working in guided chat sessions that write
+the actual code. Your job is: open a fresh chat session, say what needs
+doing, paste in two files so the session knows the current state of the
+project, and let it work. Everything gets saved to a shared online project
+folder (called a **repo**) so the other two people always see the latest
+version.
 
 ---
 
@@ -21,7 +22,7 @@ the other two people always see the latest version.
 - **Repo (repository):** the shared online folder holding all the project's
   code. Think Google Drive folder, but for code. Lives on a website called
   GitHub.
-- **PAT (Personal Access Token):** basically a password that lets the assistant save
+- **PAT (Personal Access Token):** basically a password that lets your session save
   changes to the repo *as you*, so everyone can tell who did what. You'll
   make one, once, and keep it private like a password.
 
@@ -45,7 +46,7 @@ This is the fiddliest one-time step. Follow exactly:
 1. On GitHub, click your profile picture (top right) → **Settings**
 2. Scroll all the way down the left sidebar → **Developer settings**
 3. **Personal access tokens** → **Fine-grained tokens** → **Generate new token**
-4. Give it a name like `sih26032-assistant`
+4. Give it a name like `sih26032-token`
 5. Set **Expiration** to 30 days (past our deadline is fine, doesn't matter)
 6. Under **Repository access**, choose "Only select repositories" and pick our repo
 7. Under **Permissions**, find "Contents" and set it to **Read and write**
@@ -64,7 +65,7 @@ That's the entire one-time setup. You won't do this again.
 
 ## Part 2 — Every time you sit down to work
 
-### Step 1: Open a fresh chat with the assistant
+### Step 1: Open a fresh chat session
 New chat every time, don't try to reuse an old long one.
 
 ### Step 2: Paste the "kickoff message" below, filling in your blanks
@@ -77,7 +78,7 @@ My GitHub PAT: [PASTE YOUR PAT HERE]
 Repo URL: [ORGANIZER FILLS THIS IN]
 My name (for the status log): [YOUR NAME]
 
-Follow the development rules in the "Rules the Assistant Always Follows" section
+Follow the development rules in the "Rules Every Session Follows" section
 below exactly. When we're done with this session, commit and push the
 changes to GitHub yourself, and fully rewrite PROJECT_STATUS.md (not just
 add a line) before finishing.
@@ -89,7 +90,7 @@ add a line) before finishing.
 [paste the whole file here — always grab the LATEST version from GitHub
 first, since a teammate may have updated it since you last looked]
 
---- Rules the Assistant Always Follows ---
+--- Rules Every Session Follows ---
 [paste Part 3 below]
 ```
 
@@ -97,10 +98,10 @@ first, since a teammate may have updated it since you last looked]
 before you paste it in — not an old copy sitting in your notes. That file is
 how you avoid stepping on a teammate's work.
 
-### Step 3: Tell the assistant what you want done
+### Step 3: Say what you want done
 If you don't know, just say: *"do the next task listed in PROJECT_STATUS.md."*
 If you have something specific in mind, say it in plain English — you don't
-need to speak in technical terms, the assistant will translate.
+need to speak in technical terms.
 
 ### Step 4: Let it work, answer anything it asks you
 It might ask you to confirm a decision. Answer honestly, in plain language.
@@ -114,9 +115,9 @@ problem before you go.
 
 ---
 
-## Part 3 — Rules the Assistant Always Follows
+## Part 3 — Rules Every Session Follows
 
-*(paste this block into every chat — it's the assistant's guardrails so it doesn't
+*(paste this block into every chat — it's the session's guardrails so it doesn't
 wander off and build things we don't need)*
 
 ```
@@ -145,18 +146,18 @@ Development philosophy for this project:
 
 ## Part 4 — What could go wrong (and what to do)
 
-**"The assistant says there's a conflict / push failed."**
+**"There's a conflict / push failed."**
 This means someone else pushed changes while you were working. Don't panic —
-tell the assistant: *"there's a conflict, please resolve it carefully without
-deleting anyone's work, explain what happened."* The assistant can usually sort this
-out itself. If it's stuck, ping [ORGANIZER NAME].
+tell the session: *"there's a conflict, please resolve it carefully without
+deleting anyone's work, explain what happened."* This can usually be sorted
+out within the session. If it's stuck, ping [ORGANIZER NAME].
 
-**"I don't know what to ask the assistant to build."**
+**"I don't know what to ask for."**
 Say: *"read PROJECT_STATUS.md and tell me the next task, then do it."* You
 never have to invent the task yourself.
 
 **"I think I broke something."**
-Tell the assistant directly: *"I think this broke something, can you check and fix
+Tell the session directly: *"I think this broke something, can you check and fix
 it before we push?"* Never push something you're not sure works.
 
 **"My PAT stopped working."**
@@ -167,9 +168,9 @@ Part 1, Step 3.
 
 ## Part 5 — Cheat sheet (screenshot this)
 
-1. New assistant chat
+1. New chat session
 2. Paste kickoff message + latest `PROJECT_STATUS.md` from GitHub + rules block
 3. Say what needs doing (or "do the next task")
-4. Answer the assistant's questions honestly
+4. Answer any questions it asks honestly
 5. Before closing: ask "did you push and update the status file?"
 6. Done — close the chat
