@@ -7,10 +7,10 @@ This folder holds one file that isn't part of the application:
 engine binary, plus its `.sha256` checksum.
 
 Normally `npx prisma generate` downloads this automatically from
-`binaries.prisma.sh`. It's committed here **only** because Claude's
+`binaries.prisma.sh`. It's committed here **only** because the assistant's
 sandbox environment (used to help build this project across chat
 sessions) has no network access to that domain, so it can't fetch its
-own copy. Keeping one here lets Claude run `prisma generate` and
+own copy. Keeping one here lets the assistant run `prisma generate` and
 `tsc -b` on its side to sanity-check schema changes compile, without
 needing a live Neon connection.
 
@@ -29,7 +29,7 @@ across platforms.
 **Nothing about the running app depends on this file.** Render, Vercel,
 and every teammate's own machine still get their engine binary the
 normal way, via `prisma generate`'s automatic download. This file is
-read only by Claude, only inside its own sandbox, and only as an
+read only by the assistant, only inside its own sandbox, and only as an
 optional sanity check.
 
 ## How to tell if it's gone stale
@@ -84,9 +84,9 @@ sha256sum libquery_engine.so.node   # compare by eye against the .sha256 file
 ```
 
 Then replace both files in this folder and update the hash quoted above
-in this README, and give the new file to Claude in whatever chat needs
-it (Claude's sandbox resets between conversations, so this repo copy is
-the only way the binary carries over — Claude will re-copy it into its
+in this README, and give the new file to the assistant in whatever chat needs
+it (the assistant's sandbox resets between conversations, so this repo copy is
+the only way the binary carries over — the assistant will re-copy it into its
 own scratch space each session, it doesn't run directly from here).
 
 ## Current file
