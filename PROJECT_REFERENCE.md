@@ -514,3 +514,9 @@ district changes, `domains` (Session 15), partner status notes
   Session 15 field; keeping it there risked building ahead), and added
   `GET /challenges/:id/edits` plus the new error code
   `CHALLENGE_COMPLETED`.
+
+- **2026-09-29 — Session 13 built (Pass 36):** no change to the contract
+  or design. `PATCH /challenges/:id` and `GET /challenges/:id/edits` are
+  implemented as written in §8a's "Session 13 — decided design", with the
+  `ChallengeEditLog` table (`challenge_edit_logs`). Live verification
+  pending; see PROJECT_STATUS.md Pass 36.
