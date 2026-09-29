@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getAssignedChallenges,
-  updateChallengeTeam,
   updateChallengeStatus,
   getMyPartnerContacts,
   addPartnerContact,
@@ -25,17 +24,7 @@ const NEXT_STATUS: Record<Challenge["status"], "IN_PROGRESS" | "COMPLETED" | nul
 
 function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const queryClient = useQueryClient();
-  const [teamDraft, setTeamDraft] = useState(challenge.team ?? "");
   const [error, setError] = useState<string | null>(null);
-
-  const teamMutation = useMutation({
-    mutationFn: (team: string) => updateChallengeTeam(challenge.id, team),
-    onSuccess: () => {
-      setError(null);
-      queryClient.invalidateQueries({ queryKey: ["assignedChallenges"] });
-    },
-    onError: (err) => setError(err instanceof ApiError ? err.message : "Couldn't save team."),
-  });
 
   const statusMutation = useMutation({
     mutationFn: (status: "IN_PROGRESS" | "COMPLETED") => updateChallengeStatus(challenge.id, status),
@@ -66,26 +55,10 @@ function ChallengeCard({ challenge }: { challenge: Challenge }) {
         </span>
       </div>
 
+      {/* The team-name box was removed from this screen on frPyP's request,
+          2026-09-29. Backend route PATCH /challenges/:id/team and the
+          updateChallengeTeam() helper in lib/api.ts are kept. */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <label htmlFor={`team-${challenge.id}`} className="sr-only">
-          Team name for {challenge.title}
-        </label>
-        <input
-          id={`team-${challenge.id}`}
-          type="text"
-          value={teamDraft}
-          onChange={(e) => setTeamDraft(e.target.value)}
-          placeholder="Team name"
-          className="flex-1 min-w-[10rem] rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-        />
-        <button
-          onClick={() => teamMutation.mutate(teamDraft)}
-          disabled={teamMutation.isPending || !teamDraft.trim()}
-          className="rounded-lg bg-slate-100 text-slate-900 text-sm font-medium px-3 py-1.5 hover:bg-slate-200 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400"
-        >
-          {teamMutation.isPending ? "Saving..." : "Save team"}
-        </button>
-
         {nextStatus && (
           <button
             onClick={() => statusMutation.mutate(nextStatus)}

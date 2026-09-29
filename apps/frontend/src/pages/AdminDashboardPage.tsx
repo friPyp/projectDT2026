@@ -85,7 +85,9 @@ function ReassignRow({ challenge }: { challenge: Challenge }) {
           className="flex-1 min-w-[10rem] rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
         >
           <option value="">Reassign to...</option>
-          {partners?.map((p) => (
+          {partners
+            ?.filter((p) => p.id !== challenge.assignedPartnerId)
+            .map((p) => (
             <option key={p.id} value={p.id}>
               {p.orgName} ({p.domains.map((d) => CATEGORY_LABELS[d]).join(", ")})
             </option>
