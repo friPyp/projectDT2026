@@ -13,6 +13,8 @@ import type { Response } from "express";
 // PARTNER_NOT_FOUND added Phase 2 Session 12 (routes/partners.ts),
 // same pattern — GET /partners/:id/contacts with a bad id shouldn't
 // come back as CHALLENGE_NOT_FOUND or a generic 404.
+// CHALLENGE_COMPLETED added Phase 2 Session 13 (PATCH /challenges/:id on
+// a COMPLETED challenge — 409), per PROJECT_REFERENCE.md §8a.
 export type ErrorCode =
   | "UNAUTHORIZED"
   | "FORBIDDEN"
@@ -20,7 +22,8 @@ export type ErrorCode =
   | "CHALLENGE_NOT_FOUND"
   | "INVALID_STATUS_TRANSITION"
   | "NOTIFICATION_NOT_FOUND"
-  | "PARTNER_NOT_FOUND";
+  | "PARTNER_NOT_FOUND"
+  | "CHALLENGE_COMPLETED";
 
 export function sendError(
   res: Response,
