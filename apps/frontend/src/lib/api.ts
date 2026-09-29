@@ -294,3 +294,37 @@ export function addPartnerContact(data: { label: string; value: string }) {
     body: JSON.stringify(data),
   });
 }
+
+// ---- Citizen challenge editing (Phase 2 Session 13) ----
+
+// Any non-empty subset of these; the backend rejects any other key
+// (district and domains are deliberately not editable).
+export interface UpdateChallengeInput {
+  title?: string;
+  description?: string;
+  category?: Category;
+  state?: string;
+  city?: string;
+  locality?: string;
+  address?: string;
+}
+
+export function updateChallenge(id: string, data: UpdateChallengeInput) {
+  return apiFetch<Challenge>(`/challenges/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export interface ChallengeEditLogEntry {
+  id: string;
+  challengeId: string;
+  editedAt: string;
+  // { "<field>": { before, after } } for the fields that changed (null = blank)
+  changedFields: Record<string, { before: string | null; after: string | null }>;
+}
+
+// Newest first. Allowed for the owning citizen, the assigned partner, and admin.
+export function getChallengeEdits(id: string) {
+  return apiFetch<ChallengeEditLogEntry[]>(`/challenges/${id}/edits`);
+}

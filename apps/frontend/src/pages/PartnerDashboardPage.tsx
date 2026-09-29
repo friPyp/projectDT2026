@@ -11,6 +11,7 @@ import {
 } from "../lib/api";
 import { CATEGORY_LABELS, STATUS_LABELS, STATUS_STYLES } from "../lib/challengeLabels";
 import AppLayout from "../components/AppLayout";
+import ChallengeEditHistory from "../components/ChallengeEditHistory";
 
 // Session 5 (PROJECT_REFERENCE.md §5): partner's own view of challenges
 // assigned to them — set a team, move status forward one step at a time.
@@ -101,6 +102,8 @@ function ChallengeCard({ challenge }: { challenge: Challenge }) {
           {error}
         </p>
       )}
+
+      <ChallengeEditHistory challengeId={challenge.id} />
     </li>
   );
 }
