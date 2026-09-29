@@ -109,8 +109,24 @@ model Challenge {
   team              String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+  // Phase 2 Session 13: append-only history of citizen edits.
+  editLogs          ChallengeEditLog[]
 
   @@map("challenges")
+}
+
+// Phase 2 Session 13: one row per saved citizen edit. Append-only — no
+// update or delete routes, ever (PROJECT_REFERENCE.md §8a, Session 13).
+model ChallengeEditLog {
+  id            String    @id @default(cuid())
+  challengeId   String
+  challenge     Challenge @relation(fields: [challengeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  editedAt      DateTime  @default(now())
+  // { "<field>": { "before": ..., "after": ... } } for changed fields only
+  changedFields Json
+
+  @@index([challengeId], map: "challenge_edit_logs_challengeId_idx")
+  @@map("challenge_edit_logs")
 }
 
 model Notification {
