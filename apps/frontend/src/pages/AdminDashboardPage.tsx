@@ -11,6 +11,7 @@ import {
 import { CATEGORY_LABELS, STATUS_LABELS, STATUS_STYLES } from "../lib/challengeLabels";
 import AppLayout from "../components/AppLayout";
 import ChallengeEditHistory from "../components/ChallengeEditHistory";
+import ChallengeUpdates from "../components/ChallengeUpdates";
 import type { Category, ChallengeStatus } from "../lib/api";
 
 // Session 7 (PROJECT_REFERENCE.md §5/§8): read-only counts only — no
@@ -110,6 +111,7 @@ function ReassignRow({ challenge }: { challenge: Challenge }) {
       )}
 
       <ChallengeEditHistory challengeId={challenge.id} />
+      <ChallengeUpdates challengeId={challenge.id} />
     </li>
   );
 }

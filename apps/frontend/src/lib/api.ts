@@ -328,3 +328,25 @@ export interface ChallengeEditLogEntry {
 export function getChallengeEdits(id: string) {
   return apiFetch<ChallengeEditLogEntry[]>(`/challenges/${id}/edits`);
 }
+
+// Phase 2 Session 14: partner status notes (append-only).
+export interface ChallengeUpdateEntry {
+  id: string;
+  challengeId: string;
+  partnerId: string;
+  note: string;
+  createdAt: string;
+}
+
+// Newest first. Allowed for the owning citizen, the assigned partner, and admin.
+export function getChallengeUpdates(id: string) {
+  return apiFetch<ChallengeUpdateEntry[]>(`/challenges/${id}/updates`);
+}
+
+// PARTNER only, and only for a challenge assigned to them.
+export function createChallengeUpdate(id: string, note: string) {
+  return apiFetch<ChallengeUpdateEntry>(`/challenges/${id}/updates`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+}

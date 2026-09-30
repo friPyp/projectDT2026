@@ -17,6 +17,7 @@ import {
 import { CATEGORY_LABELS, CATEGORY_OPTIONS, STATUS_LABELS, STATUS_STYLES } from "../lib/challengeLabels";
 import AppLayout from "../components/AppLayout";
 import ChallengeEditHistory from "../components/ChallengeEditHistory";
+import ChallengeUpdates from "../components/ChallengeUpdates";
 
 // Session 6: citizen-facing notification list — plain fetch-on-load, no
 // polling (per PROJECT_REFERENCE.md §2/§7, nothing here needs real-time).
@@ -418,6 +419,7 @@ function ChallengeCard({ challenge }: { challenge: Challenge }) {
       </div>
       {challenge.assignedPartnerId && <PartnerContactsPanel partnerId={challenge.assignedPartnerId} />}
       <ChallengeEditHistory challengeId={challenge.id} />
+      <ChallengeUpdates challengeId={challenge.id} />
 
       <p aria-live="polite" className="text-sm text-green-700 mt-2 empty:hidden">
         {savedMessage}
