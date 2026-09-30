@@ -530,3 +530,16 @@ district changes, `domains` (Session 15), partner status notes
   dashboard UI** at frPyP's request — this overrides the "set a team"
   partner action in §2/§5/§8 for now. The backend route and `team`
   column remain.
+
+- **2026-09-30 — Session 14 built (Pass 40):** `GET` and `POST
+  /challenges/:id/updates` implemented as written in §8a, with these
+  details filled in where the contract was silent: `note` is trimmed,
+  required, max 500 characters, strict body (extra keys rejected with
+  `VALIDATION_ERROR`); `GET` returns newest first and is allowed for the
+  owning citizen, the assigned partner, and any admin (403 `FORBIDDEN`
+  otherwise, 404 `CHALLENGE_NOT_FOUND`); `POST` returns 201 and is
+  PARTNER-only on a challenge currently assigned to that partner. No new
+  error codes. Posting a note does not change status, notify anyone, or
+  touch the challenge row, and is allowed on a `COMPLETED` challenge (the
+  contract does not block it). No edit or delete route exists. Table
+  `challenge_updates` (migration `20260930000000_add_challenge_update`).

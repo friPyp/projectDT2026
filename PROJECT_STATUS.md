@@ -29,6 +29,14 @@
 > Priority-B) still just needs its real-machine verification pass
 > whenever someone's next on a real machine — unaffected by Phase 2.
 
+> 📌 **2026-09-30 update, frPyP:** Session 14 (partner status-note log) is
+> **built and pushed to `main`; live verification is pending, and the
+> `challenge_updates` table has NOT yet been applied in Neon** — until it
+> is, the new "Status notes" panel shows "Couldn't load status notes" on
+> the citizen, partner and admin cards (nothing else is affected). Exact
+> steps are in Pass 40. Session 15 is next only after Session 14 is
+> verified live.
+
 > 📌 **2026-09-29 (later) update, frPyP:** Session 13 is **verified live
 > and closed** (Pass 38). Next task: Session 14 (partner status-note log,
 > REFERENCE §5a). The partner team-name box was removed from the UI on
@@ -518,6 +526,82 @@ Not changed: earlier git commit messages (would need a force-push, not
 being done), and the word "sandbox" where it describes the offline build
 environment.
 Left in a broken/incomplete state: nothing.
+
+---
+
+### Pass 40 — 2026-09-30 — frPyP — Session 14 (partner status-note log) built and pushed; needs Neon table + live verification
+Did:
+- Pulled latest (clean), re-read the repo docs and commit history, then
+  built Session 14 as written in REFERENCE §5a/§6a/§8a. Pushed in three
+  commits so nothing was lost mid-session:
+  1. `a2caa96` — `ChallengeUpdate` model in `schema.prisma` + hand-written
+     migration `20260930000000_add_challenge_update` (table
+     `challenge_updates`: id, challengeId, partnerId, note, createdAt;
+     index on `challengeId`; both foreign keys `ON DELETE RESTRICT ON
+     UPDATE CASCADE`).
+  2. `e461d2b` — backend: `GET /challenges/:id/updates` and
+     `POST /challenges/:id/updates`, strict zod `createUpdateSchema`
+     (note trimmed, required, max 500 characters).
+  3. `51257d9` — frontend: `getChallengeUpdates` / `createChallengeUpdate`
+     in `lib/api.ts`, new shared `ChallengeUpdates` component, wired into
+     the citizen, partner and admin views.
+- Backend behaviour: `GET` is newest first, for the owning citizen, the
+  assigned partner, or any admin (403 `FORBIDDEN` otherwise, 404
+  `CHALLENGE_NOT_FOUND`). `POST` is PARTNER only, only on a challenge
+  assigned to that partner, returns 201. Append-only: no edit or delete
+  route. It does not change status, notify anyone, re-route, or touch the
+  challenge row, and it is allowed on a COMPLETED challenge (the
+  contract does not block it — flag if you want that changed).
+- Frontend behaviour: "Status notes" panel under each challenge, newest
+  first, each note with its date. Citizen and admin views render nothing
+  until a partner has posted a note. Partner view always shows a textarea
+  (500-character counter, "can't be edited or deleted once posted"), a
+  "Post note" button disabled while empty or pending, inline errors with
+  `role="alert"`, and a polite "Posted" message.
+Tested (in this sandbox only): Prisma schema validates; `prisma generate`
+and backend `tsc --noEmit` pass; frontend `tsc -b --noEmit` and `vite
+build` pass; `createUpdateSchema` exercised directly (empty body, empty and
+whitespace-only note, 501 characters, extra key, non-string all rejected;
+a padded note is trimmed). **Not tested:** anything touching the live
+database or running app — this sandbox cannot reach Neon.
+Files touched: `apps/backend/prisma/schema.prisma`, new migration folder
+`20260930000000_add_challenge_update`,
+`apps/backend/src/routes/challenges.ts`,
+`apps/backend/src/validation/challenges.ts`, `apps/frontend/src/lib/api.ts`,
+new `apps/frontend/src/components/ChallengeUpdates.tsx`,
+`apps/frontend/src/pages/{DashboardPage,PartnerDashboardPage,AdminDashboardPage}.tsx`,
+`PROJECT_STATUS.md`, `PROJECT_REFERENCE.md`.
+Decisions made: 500-character limit; newest-first order (matches the edit
+history); notes allowed on COMPLETED challenges; no notification on a new
+note (the contract does not ask for one). All logged in REFERENCE §9.
+Deviations from spec: none. One process slip: the TEAM_WORKFLOW.md rule is
+to wait for confirmation that the migration ran before pushing dependent
+code. The migration commit went first, but the backend and frontend were
+pushed before the SQL was confirmed applied in Neon (to keep commits
+frequent). Effect: until the table exists, the Status notes panel shows a
+"Couldn't load status notes" error with a Try again link; nothing else
+breaks.
+Bugs found/fixed: none in existing code.
+Left in a broken/incomplete state: nothing known. Session 14 is written
+but not verified live.
+Anything the next person needs to know:
+- **Do first:** paste the SQL from
+  `apps/backend/prisma/migrations/20260930000000_add_challenge_update/migration.sql`
+  into Neon's SQL editor and run it.
+- **Then, on a real machine, from `apps/backend`:** `pnpm exec prisma
+  migrate resolve --applied 20260930000000_add_challenge_update`, `pnpm
+  exec prisma generate`, and restart/redeploy the backend so the new
+  client is in use.
+- **Live checks, then log as their own pass:** (1) as the assigned
+  partner, post a note — it appears at the top with a date, the box
+  clears and "Posted" shows; (2) as the citizen who owns that challenge,
+  the note shows under the card; (3) as admin, the same note shows; (4)
+  Post note is disabled while the box is empty or only spaces; (5) a
+  citizen with no notes on a challenge sees no Status notes panel; (6) a
+  second partner cannot post on or read this challenge (403); (7) confirm
+  one `challenge_updates` row per post: `SELECT "challengeId", "partnerId",
+  note, "createdAt" FROM challenge_updates ORDER BY "createdAt" DESC`.
+- Nothing from Sessions 15–18 was started.
 
 ---
 
@@ -2107,6 +2191,11 @@ not built.
 panel). The `challenge_edit_logs` table is applied in Neon. **Awaiting
 live verification** (checklist in Pass 36). Sessions 14–18 not started.
 
+**Update, 2026-09-30 (Pass 40):** Session 13 is verified and closed
+(Pass 38). Session 14 is **built and pushed**; the `challenge_updates`
+table still has to be applied in Neon and the feature live-verified
+(Pass 40 has the steps). Sessions 15–18 not started.
+
 ## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -2432,6 +2521,11 @@ verification, plus `prisma migrate resolve --applied
 20260928010000_add_challenge_edit_log` and `prisma generate` on a real
 machine (Pass 36 has the exact steps).
 
+**Update, 2026-09-30 (Pass 40):** Session 13 is closed. Session 14 code is
+on `main`. In progress: apply the `challenge_updates` table in Neon,
+`prisma migrate resolve --applied 20260930000000_add_challenge_update` and
+`prisma generate` on a real machine, redeploy, then live-verify (Pass 40).
+
 ---
 
 ## 5. Known bugs
@@ -2674,6 +2768,16 @@ history.**
 
 ---
 
+**Update, 2026-09-30 (Pass 40): the current next task is to finish Session
+14 — apply the `challenge_updates` table in Neon, run `migrate resolve` and
+`prisma generate`, redeploy, and live-verify with the Pass 40 checklist,
+logging the result as its own pass. Only after that, start Session 15
+(multi-partner assignment, REFERENCE §5a). Session 14 itself is built; do
+not rebuild it. The Pass 38 line above ("next task is Session 14") is
+superseded and kept for history.**
+
+---
+
 ## 7. Key decisions / deviations from original spec (cumulative — never delete)
 
 - Auto-routing on submission instead of a manual admin review/validation
@@ -2880,6 +2984,14 @@ newest first). New error code `CHALLENGE_COMPLETED`.
 `GET /partners/me/contacts` (PARTNER; added beyond the §8a list),
 `POST /partners/me/contacts` (PARTNER; body `{label, value}`, returns
 201 with the created contact). New error code `PARTNER_NOT_FOUND`.
+
+---
+
+**Update, 2026-09-30 (Pass 40) — Session 14, on `main`, live verification
+pending:** `GET /api/v1/challenges/:id/updates` (owning CITIZEN, assigned
+PARTNER, or ADMIN; newest first) and `POST /api/v1/challenges/:id/updates`
+(PARTNER only, own assigned challenge; body `{ note }`, 1–500 characters;
+returns 201 with the created update). No new error codes.
 
 ---
 
