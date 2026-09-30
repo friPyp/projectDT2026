@@ -111,3 +111,17 @@ export const updateChallengeSchema = z
   });
 
 export type UpdateChallengeInput = z.infer<typeof updateChallengeSchema>;
+
+// Phase 2 Session 14: a partner status note. Short by design — this is a
+// running log, not a document. Strict so stray keys are rejected.
+export const createUpdateSchema = z
+  .object({
+    note: z
+      .string({ required_error: "Note is required." })
+      .trim()
+      .min(1, "Note is required.")
+      .max(500, "Note is too long (500 characters max)."),
+  })
+  .strict();
+
+export type CreateUpdateInput = z.infer<typeof createUpdateSchema>;

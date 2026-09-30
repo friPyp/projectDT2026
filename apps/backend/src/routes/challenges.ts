@@ -6,6 +6,7 @@ import {
   updateTeamSchema,
   updateStatusSchema,
   updateChallengeSchema,
+  createUpdateSchema,
 } from "../validation/challenges";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { categorize } from "../lib/categorize";
@@ -219,6 +220,69 @@ router.get("/:id/edits", requireAuth, requireRole("CITIZEN", "PARTNER", "ADMIN")
     select: { id: true, challengeId: true, editedAt: true, changedFields: true },
   });
   res.json(edits);
+});
+
+// Phase 2 Session 14 — partner status-note log (PROJECT_REFERENCE.md §5a,
+// §6a, §8a). Append-only: there is deliberately no edit or delete route.
+// Notes are separate from the status enum and never change it. Posting a
+// note does not notify, re-route or touch the challenge row.
+
+// GET /challenges/:id/updates — the owning CITIZEN, the assigned PARTNER,
+// or any ADMIN. Newest first.
+router.get("/:id/updates", requireAuth, requireRole("CITIZEN", "PARTNER", "ADMIN"), async (req, res) => {
+  const challenge = await prisma.challenge.findUnique({ where: { id: req.params.id } });
+  if (!challenge) {
+    return sendError(res, 404, "CHALLENGE_NOT_FOUND", "No challenge with that id.");
+  }
+
+  if (req.user!.role === "CITIZEN") {
+    if (challenge.citizenId !== req.user!.id) {
+      return sendError(res, 403, "FORBIDDEN", "This isn't your challenge.");
+    }
+  } else if (req.user!.role === "PARTNER") {
+    const partner = await getPartnerForUser(req.user!.id);
+    if (!partner) {
+      return sendError(res, 403, "FORBIDDEN", "No partner profile linked to this account.");
+    }
+    if (challenge.assignedPartnerId !== partner.id) {
+      return sendError(res, 403, "FORBIDDEN", "This challenge isn't assigned to you.");
+    }
+  }
+
+  const updates = await prisma.challengeUpdate.findMany({
+    where: { challengeId: challenge.id },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, challengeId: true, partnerId: true, note: true, createdAt: true },
+  });
+  res.json(updates);
+});
+
+// POST /challenges/:id/updates — PARTNER only, and only on a challenge
+// currently assigned to them.
+router.post("/:id/updates", requireAuth, requireRole("PARTNER"), async (req, res) => {
+  const parsed = createUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendError(res, 400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid input.");
+  }
+
+  const partner = await getPartnerForUser(req.user!.id);
+  if (!partner) {
+    return sendError(res, 403, "FORBIDDEN", "No partner profile linked to this account.");
+  }
+
+  const challenge = await prisma.challenge.findUnique({ where: { id: req.params.id } });
+  if (!challenge) {
+    return sendError(res, 404, "CHALLENGE_NOT_FOUND", "No challenge with that id.");
+  }
+  if (challenge.assignedPartnerId !== partner.id) {
+    return sendError(res, 403, "FORBIDDEN", "This challenge isn't assigned to you.");
+  }
+
+  const created = await prisma.challengeUpdate.create({
+    data: { challengeId: challenge.id, partnerId: partner.id, note: parsed.data.note },
+    select: { id: true, challengeId: true, partnerId: true, note: true, createdAt: true },
+  });
+  res.status(201).json(created);
 });
 
 // PATCH /challenges/:id/team — PARTNER only (§8). Sets the plain-text
