@@ -69,6 +69,8 @@ model Partner {
 
   challenges Challenge[] @relation("PartnerChallenges")
   contacts   PartnerContact[]
+  // Phase 2 Session 14: status notes this partner has posted.
+  updates    ChallengeUpdate[]
 
   @@map("partners")
 }
@@ -111,6 +113,8 @@ model Challenge {
   updatedAt         DateTime        @updatedAt
   // Phase 2 Session 13: append-only history of citizen edits.
   editLogs          ChallengeEditLog[]
+  // Phase 2 Session 14: append-only partner status notes.
+  updates           ChallengeUpdate[]
 
   @@map("challenges")
 }
@@ -127,6 +131,22 @@ model ChallengeEditLog {
 
   @@index([challengeId], map: "challenge_edit_logs_challengeId_idx")
   @@map("challenge_edit_logs")
+}
+
+// Phase 2 Session 14: a short status note a partner posts against a
+// challenge. Append-only — no update or delete routes, ever
+// (PROJECT_REFERENCE.md §6a/§8a). Separate from the coarse status enum.
+model ChallengeUpdate {
+  id          String    @id @default(cuid())
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  partnerId   String
+  partner     Partner   @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  note        String
+  createdAt   DateTime  @default(now())
+
+  @@index([challengeId], map: "challenge_updates_challengeId_idx")
+  @@map("challenge_updates")
 }
 
 model Notification {
