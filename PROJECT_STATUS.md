@@ -29,6 +29,11 @@
 > Priority-B) still just needs its real-machine verification pass
 > whenever someone's next on a real machine — unaffected by Phase 2.
 
+> 📌 **2026-09-30 (later) update, frPyP:** Session 14 is **verified live and
+> closed** (Pass 41). Next task: Session 15 (multi-partner / multi-domain
+> assignment, REFERENCE §5a). The older Session 14 note below is
+> superseded and kept for history.
+
 > 📌 **2026-09-30 update, frPyP:** Session 14 (partner status-note log) is
 > **built and pushed to `main`; live verification is pending, and the
 > `challenge_updates` table has NOT yet been applied in Neon** — until it
@@ -602,6 +607,33 @@ Anything the next person needs to know:
   one `challenge_updates` row per post: `SELECT "challengeId", "partnerId",
   note, "createdAt" FROM challenge_updates ORDER BY "createdAt" DESC`.
 - Nothing from Sessions 15–18 was started.
+
+---
+
+### Pass 41 — 2026-09-30 — frPyP — Session 14 verified live and closed
+Did:
+- frPyP created the `challenge_updates` table in Neon, ran `pnpm exec
+  prisma migrate resolve --applied 20260930000000_add_challenge_update`
+  and `pnpm exec prisma generate` on a real machine, and tested on the
+  live site. Render's build command already runs `prisma generate`
+  (`pnpm install && pnpm --filter backend prisma:generate && pnpm
+  --filter backend build`), and the live service was on commit `004c8b4`
+  (Live), so the new model was in the deployed backend.
+- frPyP reported that everything works. This is frPyP's summary; the
+  individual Pass 40 checklist items were not reported one by one.
+Files touched: `PROJECT_STATUS.md`.
+Decisions made: none new.
+Deviations from spec: none.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: nothing. Session 14 is fully done.
+Anything the next person needs to know: Session 15 (multi-partner /
+multi-domain assignment) is next and is the biggest change so far: it
+replaces the single `assignedPartnerId` model with the
+`ChallengeAssignment` table (REFERENCE §5a/§6a) and touches routing, the
+partner dashboard and notifications, plus the Session 13 edit check and
+the Session 14 note permission, which both use `assignedPartnerId` today.
+Settle its design in the reference first, as was done for Session 13,
+before writing code. Sessions 16–18 are after it.
 
 ---
 
@@ -2196,6 +2228,9 @@ live verification** (checklist in Pass 36). Sessions 14–18 not started.
 table still has to be applied in Neon and the feature live-verified
 (Pass 40 has the steps). Sessions 15–18 not started.
 
+**Update, 2026-09-30 (Pass 41):** Session 14 is **verified live and
+closed.** Session 15 is next; nothing from 15–18 has been started.
+
 ## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -2526,6 +2561,9 @@ on `main`. In progress: apply the `challenge_updates` table in Neon,
 `prisma migrate resolve --applied 20260930000000_add_challenge_update` and
 `prisma generate` on a real machine, redeploy, then live-verify (Pass 40).
 
+**Update, 2026-09-30 (Pass 41):** Session 14 is verified and closed.
+Nothing is in progress; Session 15 is next.
+
 ---
 
 ## 5. Known bugs
@@ -2775,6 +2813,14 @@ logging the result as its own pass. Only after that, start Session 15
 (multi-partner assignment, REFERENCE §5a). Session 14 itself is built; do
 not rebuild it. The Pass 38 line above ("next task is Session 14") is
 superseded and kept for history.**
+
+---
+
+**Update, 2026-09-30 (Pass 41): Session 14 is verified live and closed.
+The current next task is Session 15 (multi-partner / multi-domain
+assignment, REFERENCE §5a). Write its design into the reference first (as
+Pass 35 did for Session 13), then build. The Pass 40 "finish Session 14"
+line above is superseded and kept for history.**
 
 ---
 
