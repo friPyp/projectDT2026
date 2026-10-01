@@ -454,11 +454,16 @@ find out), editing after `COMPLETED`, undoing or deleting edits,
 district changes, `domains` (Session 15), partner status notes
 (Session 14).
 
-### Session 15 — proposed design (2026-10-01, written for frPyP's approval; NOT yet built, no code or schema changed)
+### Session 15 — decided design (2026-10-01, approved by delegation from frPyP; NOT yet built, no code or schema changed)
 
 Session 15 replaces the single-partner model with several partners per
 challenge. This block settles the open questions first, as Session 13's
-block did. Nothing below is built until frPyP says yes.
+block did. frPyP delegated all three questions at the end of this block ("do
+whatever you want"), so the answers are the recommendations given here:
+(a) per-partner status with a derived challenge status, (b) auto-added
+domains with 2+ keyword hits, max 3, (c) keep `assignedPartnerId` for
+now. The four flagged conflicts below are accepted the same way. Nothing
+below is built yet.
 
 **Conflicts with the text above (flagged, not silently picked):**
 1. §6a lists `ChallengeAssignment` as `id, challengeId, partnerId,
@@ -650,3 +655,10 @@ only domains the citizen ticks count? (c) keep the old
   /challenges/:id/status`, changed meaning of admin reassign) and three
   questions for frPyP. Pending frPyP's approval; the line in §8a saying
   Session 15's endpoint shapes are "to be appended" is superseded by it.
+
+- **2026-10-01 — Session 15 design approved (Pass 43, no code):** frPyP
+  delegated the three open questions ("do whatever you want ... a
+  functional, user-friendly product"). The §8a block's heading and its
+  first paragraph were edited to say "decided" and to record the answers
+  (per-partner status, auto-added domains 2+ hits max 3, keep
+  `assignedPartnerId` for now). The design itself is unchanged.

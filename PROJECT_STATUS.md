@@ -29,6 +29,12 @@
 > Priority-B) still just needs its real-machine verification pass
 > whenever someone's next on a real machine — unaffected by Phase 2.
 
+> 📌 **2026-10-01 (later) update, frPyP:** Session 15's design is
+> **approved** (frPyP delegated the three questions; answers recorded in
+> REFERENCE §8a). **Build it in a fresh chat; nothing is built yet.** Read
+> Pass 43 for the exact first steps and the one trap to avoid. The older
+> "awaiting approval" note below is superseded and kept for history.
+
 > 📌 **2026-10-01 update, frPyP:** Session 15's design is **written and
 > awaiting frPyP's approval** (REFERENCE §8a, "Session 15 — proposed
 > design", with three questions at its end). **No code or schema has
@@ -670,6 +676,55 @@ three questions, in the build order at the end of the design block, with
 the migration pushed alone first and the SQL run in Neon before dependent
 code is pushed (TEAM_WORKFLOW Part 3). Session 15 touches Session 13's and
 Session 14's assignment checks, so re-check both after it.
+
+---
+
+### Pass 43 — 2026-10-01 — frPyP — Session 15 design approved; handoff for a fresh chat (documentation only, no code)
+Did:
+- frPyP delegated the three open questions in Pass 42 ("do whatever you
+  want", wants a functional, user-friendly product) and asked to continue
+  Session 15 in a new chat. Recorded the answers in REFERENCE §8a (heading
+  now "decided design") and a §9 change-log entry: per-partner status with
+  derived challenge status; auto-added domains with 2+ keyword hits, max 3;
+  keep `assignedPartnerId` for now.
+- No code, schema or database change was made. Nothing is half-built.
+Files touched: `PROJECT_REFERENCE.md`, `PROJECT_STATUS.md`.
+Decisions made: the three answers above (by delegation). Deviations from
+spec: the four conflicts listed in the design block, accepted the same way.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: nothing.
+Anything the next person needs to know:
+- **Build Session 15 from REFERENCE §8a "Session 15 — decided design",
+  in its build order.** Step 1 is the schema + migration (with the
+  backfill of existing challenges into `challenge_assignments`, and
+  `domains` set from `category`), pushed alone. Then frPyP runs the SQL in
+  Neon's SQL editor and runs `pnpm exec prisma migrate resolve --applied
+  <folder>` and `pnpm exec prisma generate` on a real machine.
+- **The trap:** unlike Session 14, Session 15 changes the core flows
+  (submit, partner dashboard, status moves). Code that reads
+  `challenge_assignments` pushed *before* the table exists in Neon would
+  break the live site for every user. So: push the migration alone, **wait
+  for frPyP to confirm the SQL ran, and only then push the backend and
+  frontend commits** (TEAM_WORKFLOW Part 3). Pass 40 pushed early because
+  the notes panel was isolated; do not copy that here. Keep the finished
+  code in local commits while waiting if needed, and push as soon as the
+  table is confirmed.
+- Sandbox setup that works: `npm i -g pnpm`, `pnpm install
+  --frozen-lockfile`, then for Prisma set `PRISMA_QUERY_ENGINE_LIBRARY` to
+  `tools/prisma-engine-cache/debian-openssl-3.0.x/libquery_engine.so.node`,
+  `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true` and a dummy `DATABASE_URL`
+  before `prisma validate` / `prisma generate`; then `tsc --noEmit` in both
+  apps and `vite build`. The sandbox cannot reach Neon. A local Postgres
+  would allow real route tests: `apt-get install postgresql` failed once
+  with 404s from the package mirror; running `apt-get update` first may fix
+  it. Untested whether it then works.
+- Git setup in a fresh clone: `git config user.name frPyP` and
+  `git config user.email frPyP@users.noreply.github.com`; commit messages
+  end with "(frPyP)". Only project members' names appear in repo files.
+- Re-check Session 13 (edit-history read) and Session 14 (notes read and
+  post) after the switch to assignments; both use the old single-partner
+  check today. Render's build command already runs `prisma generate`.
+- Finish by logging the live verification as its own pass, then Session 16.
 
 ---
 
@@ -2270,6 +2325,9 @@ closed.** Session 15 is next; nothing from 15–18 has been started.
 **Update, 2026-10-01 (Pass 42):** Session 15's design is written
 (REFERENCE §8a) and awaiting frPyP's approval. Not built.
 
+**Update, 2026-10-01 (Pass 43):** Session 15's design is **approved**; not
+built. A fresh chat builds it next (see Pass 43).
+
 ## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -2867,6 +2925,15 @@ line above is superseded and kept for history.**
 answer the three questions at the end of REFERENCE §8a's "Session 15 —
 proposed design". After that, build Session 15 in the order given there.
 Do not write Session 15 code before then.**
+
+---
+
+**Update, 2026-10-01 (Pass 43): the current next task is to build Session
+15 from REFERENCE §8a "Session 15 — decided design", starting with the
+schema + migration pushed alone, then waiting for frPyP to confirm the SQL
+ran in Neon before pushing any code that uses the new table (Pass 43 has
+the details). The Pass 42 "answer the three questions" line above is
+superseded and kept for history.**
 
 ---
 
