@@ -454,6 +454,105 @@ find out), editing after `COMPLETED`, undoing or deleting edits,
 district changes, `domains` (Session 15), partner status notes
 (Session 14).
 
+### Session 15 — proposed design (2026-10-01, written for frPyP's approval; NOT yet built, no code or schema changed)
+
+Session 15 replaces the single-partner model with several partners per
+challenge. This block settles the open questions first, as Session 13's
+block did. Nothing below is built until frPyP says yes.
+
+**Conflicts with the text above (flagged, not silently picked):**
+1. §6a lists `ChallengeAssignment` as `id, challengeId, partnerId,
+   assignedAt`. This design **adds `status`** to it (see "Status" below).
+   Without it, one partner finishing would mark the whole challenge done.
+2. §6a says `assignedPartnerId` is "replaced". This design **stops using
+   it but does not drop the column** in Session 15; it is dropped in a
+   later cleanup only once Session 15 is verified live (rollback safety).
+3. §8's `PATCH /challenges/:id/status` is frozen. Its request and response
+   shape stay the same, but its meaning changes: it moves the **calling
+   partner's own assignment** forward, and the challenge's `status` is
+   recomputed from all assignments.
+4. §8's `PATCH /admin/challenges/:id/reassign` keeps its shape, and now
+   means "replace all current partners with this one partner".
+
+**Data**
+- New `challenges.domains` (`Category[]`, default empty). `category`
+  stays required and stays the primary domain. `domains` holds the full
+  set of domains the challenge was routed on, primary included.
+- New `ChallengeAssignment`: `id, challengeId, partnerId, status
+  (ChallengeStatus, default ASSIGNED), assignedAt`. Unique on
+  `(challengeId, partnerId)`; both FKs `ON DELETE RESTRICT`.
+- The migration **backfills** one assignment row for every existing
+  challenge that has an `assignedPartnerId`, copying its current status,
+  so no existing challenge changes behaviour. `challenges.team` is left
+  as it is (the UI box was removed in Pass 38; the route stays).
+
+**Routing**
+- Citizen form: the existing category dropdown stays (primary domain). A
+  new optional "Also relevant to" multi-select adds extra domains.
+- Auto-suggestion: on submit, the backend also adds any domain with 2 or
+  more keyword hits (existing keyword lists), at most 3 domains in total.
+  The response returns the final `domains` so the form can say which were
+  used. Editing a challenge later never changes `domains` or assignments
+  (Session 13's no-re-route rule stands).
+- For each domain, today's `routeToPartner` rule applies (first matching
+  partner, earliest-seeded fallback). Duplicates are merged, so a partner
+  covering two of the domains gets one assignment, not two.
+
+**Status (per partner, challenge status derived)**
+- Each partner moves only their own assignment
+  `ASSIGNED → IN_PROGRESS → COMPLETED`, forward one step at a time.
+- `challenges.status` is recomputed in the same transaction on every
+  change: no assignments → `SUBMITTED`; all `COMPLETED` → `COMPLETED`;
+  all `ASSIGNED` → `ASSIGNED`; anything else → `IN_PROGRESS`. This keeps
+  the citizen dashboard, admin counts, Session 13's COMPLETED edit lock
+  and Session 17's stats working unchanged.
+- The citizen gets the existing `STATUS_UPDATED` notification whenever any
+  partner moves their assignment. No new notification types.
+
+**Permissions**: every "is this partner assigned?" check (status, team,
+Session 13's edit-history read, Session 14's notes read and post, partner
+list) becomes "has an assignment row". Citizen and admin rules unchanged.
+
+**Coordination view (partners on the same challenge)**
+- A partner's card shows "Also working on this": each other assigned
+  partner's org name, their own status, and their contact channels
+  (Session 12 data), read-only.
+- Session 14 notes become the shared thread: every assigned partner can
+  read and post, and each note shows the posting partner's org name.
+- Not built: chat, direct partner-to-partner messaging, shared files.
+
+**Contract changes (additive only)**
+- `POST /challenges` also accepts optional `domains: Category[]`.
+  Responses include `domains` and `assignments: [{ partnerId, orgName,
+  status }]`; `assignedPartnerId` stays in responses as the partner for
+  the primary category, for the existing UI.
+- `GET /challenges/:id/updates` entries gain `partnerName`.
+- `GET /challenges` for a partner returns challenges where they hold an
+  assignment, with that partner's own status shown.
+- Admin: reassign replaces all partners with the chosen one, and is
+  rejected if that is already the only assigned partner. `GET
+  /admin/dashboard`'s `partnersEngaged` counts distinct partners holding
+  an assignment; `byDomain` still counts by the primary `category`.
+- No new error codes.
+
+**Not in Session 15:** admin adding or removing a single partner on a
+challenge, editing `domains` after submission, new notification types,
+dropping `assignedPartnerId`, partner-to-partner messaging, the UI redesign
+(Session 16).
+
+**Build order (each its own commit, pushed immediately):** (1) schema +
+migration with backfill, pushed alone, then frPyP runs the SQL in Neon;
+(2) backend: assignment helper, multi-domain routing, submit; (3) backend:
+switch every permission check, list, status route and admin route to
+assignments; (4) frontend: submit form, partner coordination view,
+citizen/admin display; (5) docs, then live verification as its own pass.
+
+**Questions for frPyP before any code:** (a) per-partner status with a
+derived challenge status, as above, or one shared status any partner can
+move? (b) are auto-added domains (2+ keyword hits, max 3) OK, or should
+only domains the citizen ticks count? (c) keep the old
+`assignedPartnerId` column for now, as above?
+
 ---
 
 ## 9. Change log for this file (append, never silently edit sections above without a note here)
@@ -543,3 +642,11 @@ district changes, `domains` (Session 15), partner status notes
   touch the challenge row, and is allowed on a `COMPLETED` challenge (the
   contract does not block it). No edit or delete route exists. Table
   `challenge_updates` (migration `20260930000000_add_challenge_update`).
+
+- **2026-10-01 — Session 15 design proposed (Pass 42, no code):** added the
+  "Session 15 — proposed design" block at the end of §8a, including four
+  flagged conflicts with §6a/§8 (extra `status` on `ChallengeAssignment`,
+  `assignedPartnerId` kept for now, changed meaning of `PATCH
+  /challenges/:id/status`, changed meaning of admin reassign) and three
+  questions for frPyP. Pending frPyP's approval; the line in §8a saying
+  Session 15's endpoint shapes are "to be appended" is superseded by it.
