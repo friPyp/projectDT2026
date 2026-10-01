@@ -29,6 +29,11 @@
 > Priority-B) still just needs its real-machine verification pass
 > whenever someone's next on a real machine — unaffected by Phase 2.
 
+> 📌 **2026-10-01 update, frPyP:** Session 15's design is **written and
+> awaiting frPyP's approval** (REFERENCE §8a, "Session 15 — proposed
+> design", with three questions at its end). **No code or schema has
+> changed.** Do not start building until frPyP answers (Pass 42).
+
 > 📌 **2026-09-30 (later) update, frPyP:** Session 14 is **verified live and
 > closed** (Pass 41). Next task: Session 15 (multi-partner / multi-domain
 > assignment, REFERENCE §5a). The older Session 14 note below is
@@ -634,6 +639,37 @@ partner dashboard and notifications, plus the Session 13 edit check and
 the Session 14 note permission, which both use `assignedPartnerId` today.
 Settle its design in the reference first, as was done for Session 13,
 before writing code. Sessions 16–18 are after it.
+
+---
+
+### Pass 42 — 2026-10-01 — frPyP — Session 15 (multi-partner assignment) design written, awaiting approval (documentation only, no code)
+Did:
+- Pulled latest (clean). Re-read REFERENCE §2/§5a/§6/§6a/§8/§8a and the code
+  that uses `assignedPartnerId` (`routes/challenges.ts`, `routes/admin.ts`,
+  `lib/routing.ts`, `lib/categorize.ts`, the citizen/partner/admin
+  dashboards), then wrote "Session 15 — proposed design" at the end of
+  REFERENCE §8a and a §9 change-log entry.
+- Design in one line: new `ChallengeAssignment` table (with its own
+  per-partner status) plus `challenges.domains`; challenge status is
+  derived from the assignments; every partner-permission check becomes
+  "has an assignment"; partners on the same challenge see each other and
+  share the Session 14 notes thread.
+- Four conflicts with existing reference text are listed in the block
+  (extra `status` column, old column kept for now, changed meaning of the
+  partner status route and of admin reassign), as the rules require.
+Files touched: `PROJECT_REFERENCE.md`, `PROJECT_STATUS.md`.
+Decisions made: none final. Three questions are open for frPyP: (a)
+per-partner status vs one shared status, (b) auto-added domains (2+ keyword
+hits, max 3) vs citizen-ticked only, (c) keep `assignedPartnerId` for now.
+Deviations from spec: the four flagged conflicts, pending approval.
+Bugs found/fixed: none.
+Left in a broken/incomplete state: nothing. No code, schema or database
+change was made.
+Anything the next person needs to know: build only after frPyP answers the
+three questions, in the build order at the end of the design block, with
+the migration pushed alone first and the SQL run in Neon before dependent
+code is pushed (TEAM_WORKFLOW Part 3). Session 15 touches Session 13's and
+Session 14's assignment checks, so re-check both after it.
 
 ---
 
@@ -2231,6 +2267,9 @@ table still has to be applied in Neon and the feature live-verified
 **Update, 2026-09-30 (Pass 41):** Session 14 is **verified live and
 closed.** Session 15 is next; nothing from 15–18 has been started.
 
+**Update, 2026-10-01 (Pass 42):** Session 15's design is written
+(REFERENCE §8a) and awaiting frPyP's approval. Not built.
+
 ## 1-prior. Priority-A/B history (unchanged by Phase 2)
 
 **Session 1 is done** (confirmed against the real database — see Pass 5).
@@ -2821,6 +2860,13 @@ The current next task is Session 15 (multi-partner / multi-domain
 assignment, REFERENCE §5a). Write its design into the reference first (as
 Pass 35 did for Session 13), then build. The Pass 40 "finish Session 14"
 line above is superseded and kept for history.**
+
+---
+
+**Update, 2026-10-01 (Pass 42): the current next task is for frPyP to
+answer the three questions at the end of REFERENCE §8a's "Session 15 —
+proposed design". After that, build Session 15 in the order given there.
+Do not write Session 15 code before then.**
 
 ---
 
