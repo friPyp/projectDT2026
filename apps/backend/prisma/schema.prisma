@@ -71,6 +71,8 @@ model Partner {
   contacts   PartnerContact[]
   // Phase 2 Session 14: status notes this partner has posted.
   updates    ChallengeUpdate[]
+  // Phase 2 Session 15: every challenge this partner is assigned to.
+  assignments ChallengeAssignment[]
 
   @@map("partners")
 }
@@ -115,6 +117,10 @@ model Challenge {
   editLogs          ChallengeEditLog[]
   // Phase 2 Session 14: append-only partner status notes.
   updates           ChallengeUpdate[]
+  // Phase 2 Session 15: all domains the challenge was routed on (primary
+  // `category` included), and one assignment per partner working on it.
+  domains           Category[]            @default([])
+  assignments       ChallengeAssignment[]
 
   @@map("challenges")
 }
@@ -147,6 +153,23 @@ model ChallengeUpdate {
 
   @@index([challengeId], map: "challenge_updates_challengeId_idx")
   @@map("challenge_updates")
+}
+
+// Phase 2 Session 15: one row per partner assigned to a challenge, with
+// that partner's own progress. The challenge's status is derived from
+// these rows (PROJECT_REFERENCE.md §8a, Session 15 decided design).
+model ChallengeAssignment {
+  id          String          @id @default(cuid())
+  challengeId String
+  challenge   Challenge       @relation(fields: [challengeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  partnerId   String
+  partner     Partner         @relation(fields: [partnerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  status      ChallengeStatus @default(ASSIGNED)
+  assignedAt  DateTime        @default(now())
+
+  @@unique([challengeId, partnerId])
+  @@index([partnerId], map: "challenge_assignments_partnerId_idx")
+  @@map("challenge_assignments")
 }
 
 model Notification {
