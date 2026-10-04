@@ -33,6 +33,13 @@ export const createChallengeSchema = z.object({
     errorMap: () => ({ message: "Choose a valid category." }),
   }),
   district: z.string().trim().min(1, "District is required."),
+  // Phase 2 Session 15: optional extra domains the citizen ticked in the
+  // "Also relevant to" box. The backend merges these with its own keyword
+  // suggestions and caps the total at 3 (lib/categorize.ts pickDomains).
+  domains: z
+    .array(z.enum(CATEGORIES, { errorMap: () => ({ message: "Choose valid domains." }) }))
+    .max(7, "Too many domains.")
+    .optional(),
   // Phase 2 Session 11 (PROJECT_REFERENCE.md §5a/§8a): optional plain-text
   // location detail. Blank/whitespace-only input is stored as null, so the
   // form can send empty strings without them becoming "" in the database.

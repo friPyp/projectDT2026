@@ -9,8 +9,9 @@ import {
   createUpdateSchema,
 } from "../validation/challenges";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { categorize } from "../lib/categorize";
-import { routeToPartner } from "../lib/routing";
+import { categorize, pickDomains } from "../lib/categorize";
+import { routeToPartners } from "../lib/routing";
+import { assignmentsInclude, withAssignments } from "../lib/assignments";
 import { notify } from "../lib/notify";
 import { findPossibleDuplicates } from "../lib/dedup";
 
@@ -49,7 +50,7 @@ router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
   if (!parsed.success) {
     return sendError(res, 400, "VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Invalid input.");
   }
-  const { title, description, category, district, state, city, locality, address } = parsed.data;
+  const { title, description, category, district, state, city, locality, address, domains: pickedDomains } = parsed.data;
 
   // Priority-B: dedup detection, checked *before* creating so the new
   // challenge never matches against itself. Per the call made when
@@ -59,13 +60,20 @@ router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
   const possibleDuplicates = await findPossibleDuplicates(district, title, description);
 
   const finalCategory = categorize(title, description, category);
-  const assignedPartnerId = await routeToPartner(finalCategory);
+  // Phase 2 Session 15: route on every relevant domain (primary first, then
+  // the citizen's extra picks, then keyword suggestions, max 3). Each domain
+  // goes to its own partner; duplicates are merged. `assignedPartnerId`
+  // stays as the partner for the primary category, for the existing UI.
+  const domains = pickDomains(title, description, finalCategory, pickedDomains ?? []);
+  const partnerIds = await routeToPartners(domains);
+  const assignedPartnerId = partnerIds[0] ?? null;
 
   const challenge = await prisma.challenge.create({
     data: {
       title,
       description,
       category: finalCategory,
+      domains,
       district,
       state,
       city,
@@ -74,7 +82,9 @@ router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
       status: assignedPartnerId ? "ASSIGNED" : "SUBMITTED",
       assignedPartnerId,
       citizenId: req.user!.id,
+      assignments: { create: partnerIds.map((partnerId) => ({ partnerId })) },
     },
+    include: assignmentsInclude,
   });
 
   // Session 6: CHALLENGE_ASSIGNED fires only when auto-routing actually
@@ -91,7 +101,7 @@ router.post("/", requireAuth, requireRole("CITIZEN"), async (req, res) => {
     );
   }
 
-  res.status(201).json({ ...challenge, possibleDuplicates });
+  res.status(201).json({ ...withAssignments(challenge), possibleDuplicates });
 });
 
 // GET /challenges — §8 says this returns "own for CITIZEN, assigned for

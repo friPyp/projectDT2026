@@ -28,3 +28,19 @@ export async function routeToPartner(category: Category): Promise<string | null>
   });
   return fallback ? fallback.id : null;
 }
+
+// Phase 2 Session 15: routes one challenge across several domains. Each
+// domain goes through routeToPartner above (first matching partner,
+// earliest-seeded fallback). Duplicates are merged, so a partner covering
+// two of the domains gets one assignment, not two. The first entry is
+// always the partner for the first (primary) domain.
+export async function routeToPartners(domains: Category[]): Promise<string[]> {
+  const partnerIds: string[] = [];
+  for (const domain of domains) {
+    const partnerId = await routeToPartner(domain);
+    if (partnerId && !partnerIds.includes(partnerId)) {
+      partnerIds.push(partnerId);
+    }
+  }
+  return partnerIds;
+}

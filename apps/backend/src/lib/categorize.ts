@@ -51,3 +51,38 @@ export function categorize(title: string, description: string, chosenCategory: C
 
   return bestScore > 0 ? bestCategory : chosenCategory;
 }
+
+// Phase 2 Session 15 (PROJECT_REFERENCE.md §8a "Session 15 — decided
+// design"): a challenge can be routed on several domains. Besides the one
+// primary category above, any other domain with 2 or more keyword hits is
+// suggested too. Same plain string matching as above, nothing fancier.
+export const MAX_DOMAINS = 3;
+const MIN_HITS_FOR_EXTRA_DOMAIN = 2;
+
+/**
+ * Builds the final ordered domain list for a challenge: the primary
+ * category first, then domains the citizen ticked, then auto-suggested
+ * domains (2+ keyword hits, strongest first), no duplicates, at most
+ * MAX_DOMAINS in total.
+ */
+export function pickDomains(
+  title: string,
+  description: string,
+  primary: Category,
+  citizenPicked: Category[] = []
+): Category[] {
+  const text = `${title} ${description}`.toLowerCase();
+
+  const suggested = (Object.keys(CATEGORY_KEYWORDS) as Category[])
+    .map((category) => ({ category, score: scoreCategory(text, category) }))
+    .filter((entry) => entry.score >= MIN_HITS_FOR_EXTRA_DOMAIN)
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.category);
+
+  const ordered: Category[] = [primary];
+  for (const category of [...citizenPicked, ...suggested]) {
+    if (ordered.length >= MAX_DOMAINS) break;
+    if (!ordered.includes(category)) ordered.push(category);
+  }
+  return ordered;
+}
