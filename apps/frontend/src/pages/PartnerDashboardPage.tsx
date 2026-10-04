@@ -12,6 +12,7 @@ import { CATEGORY_LABELS, STATUS_LABELS, STATUS_STYLES } from "../lib/challengeL
 import AppLayout from "../components/AppLayout";
 import ChallengeEditHistory from "../components/ChallengeEditHistory";
 import ChallengeUpdates from "../components/ChallengeUpdates";
+import AlsoWorkingOn from "../components/AlsoWorkingOn";
 
 // Session 5 (PROJECT_REFERENCE.md §5): partner's own view of challenges
 // assigned to them — set a team, move status forward one step at a time.
@@ -77,6 +78,11 @@ function ChallengeCard({ challenge }: { challenge: Challenge }) {
         </p>
       )}
 
+      <AlsoWorkingOn
+        assignments={challenge.assignments ?? []}
+        ownPartnerId={challenge.myPartnerId}
+        challengeId={challenge.id}
+      />
       <ChallengeEditHistory challengeId={challenge.id} />
       <ChallengeUpdates challengeId={challenge.id} canPost />
     </li>

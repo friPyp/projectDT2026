@@ -155,7 +155,12 @@ router.get("/", requireAuth, requireRole("CITIZEN", "PARTNER", "ADMIN"), async (
   res.json(
     challenges.map((c) => {
       const own = c.assignments.find((a) => a.partnerId === partner.id);
-      return { ...withAssignments(c), status: own ? own.status : c.status, challengeStatus: c.status };
+      return {
+        ...withAssignments(c),
+        status: own ? own.status : c.status,
+        challengeStatus: c.status,
+        myPartnerId: partner.id,
+      };
     })
   );
 });

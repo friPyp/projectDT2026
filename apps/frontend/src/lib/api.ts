@@ -129,6 +129,8 @@ export interface Challenge {
   // `challengeStatus` is the overall one (Session 15).
   status: ChallengeStatus;
   challengeStatus?: ChallengeStatus;
+  // Session 15: only on a PARTNER's list — that partner's own partner id.
+  myPartnerId?: string;
   // Session 15: every domain the challenge was routed on (primary included)
   // and every partner assigned to it.
   domains: Category[];
