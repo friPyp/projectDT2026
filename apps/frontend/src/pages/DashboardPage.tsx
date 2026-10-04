@@ -112,7 +112,7 @@ function NotificationsList() {
 
 // Phase 2 Session 12: how to reach the partner assigned to a challenge.
 // Collapsed by default; contacts are fetched only when opened.
-function PartnerContactsPanel({ partnerId }: { partnerId: string }) {
+function PartnerContactsPanel({ partnerId, orgName }: { partnerId: string; orgName?: string }) {
   const [open, setOpen] = useState(false);
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["partnerContacts", partnerId],
@@ -128,7 +128,7 @@ function PartnerContactsPanel({ partnerId }: { partnerId: string }) {
         aria-expanded={open}
         className="text-sm font-medium text-slate-700 underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400 rounded"
       >
-        {open ? "Hide partner contact" : "Contact partner"}
+        {open ? `Hide ${orgName ?? "partner"} contact` : `Contact ${orgName ?? "partner"}`}
       </button>
 
       {open && isLoading && (
@@ -407,7 +407,10 @@ function ChallengeCard({ challenge }: { challenge: Challenge }) {
         <div className="min-w-0">
           <h2 className="font-medium text-slate-900 truncate">{challenge.title}</h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            {CATEGORY_LABELS[challenge.category]} · {challenge.district}
+            {(challenge.domains && challenge.domains.length > 0 ? challenge.domains : [challenge.category])
+              .map((d) => CATEGORY_LABELS[d])
+              .join(", ")}{" "}
+            · {challenge.district}
           </p>
           <p className="text-sm text-slate-600 mt-2 line-clamp-2">{challenge.description}</p>
         </div>
@@ -417,7 +420,13 @@ function ChallengeCard({ challenge }: { challenge: Challenge }) {
           {STATUS_LABELS[challenge.status]}
         </span>
       </div>
-      {challenge.assignedPartnerId && <PartnerContactsPanel partnerId={challenge.assignedPartnerId} />}
+      {/* Session 15: one contact panel per assigned partner (falls back to
+          the old single partner if a response carries no assignments). */}
+      {challenge.assignments && challenge.assignments.length > 0
+        ? challenge.assignments.map((a) => (
+            <PartnerContactsPanel key={a.partnerId} partnerId={a.partnerId} orgName={a.orgName} />
+          ))
+        : challenge.assignedPartnerId && <PartnerContactsPanel partnerId={challenge.assignedPartnerId} />}
       <ChallengeEditHistory challengeId={challenge.id} />
       <ChallengeUpdates challengeId={challenge.id} />
 

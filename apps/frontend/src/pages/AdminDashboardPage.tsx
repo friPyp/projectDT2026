@@ -54,7 +54,10 @@ function ReassignRow({ challenge }: { challenge: Challenge }) {
     onError: (err) => setError(err instanceof ApiError ? err.message : "Couldn't reassign."),
   });
 
-  const currentPartner = partners?.find((p) => p.id === challenge.assignedPartnerId);
+  // Session 15: a challenge can have several partners; list them all with
+  // each partner's own status.
+  const current = challenge.assignments ?? [];
+  const onlyPartnerId = current.length === 1 ? current[0].partnerId : null;
 
   return (
     <li className="bg-white rounded-xl border border-slate-200 p-4">
@@ -62,10 +65,16 @@ function ReassignRow({ challenge }: { challenge: Challenge }) {
         <div className="min-w-0">
           <h3 className="font-medium text-slate-900 truncate">{challenge.title}</h3>
           <p className="text-sm text-slate-500 mt-0.5">
-            {CATEGORY_LABELS[challenge.category]} · {challenge.district}
+            {(challenge.domains && challenge.domains.length > 0 ? challenge.domains : [challenge.category])
+              .map((d) => CATEGORY_LABELS[d])
+              .join(", ")}{" "}
+            · {challenge.district}
           </p>
           <p className="text-sm text-slate-600 mt-1">
-            Currently: {currentPartner ? currentPartner.orgName : "Unassigned"}
+            Currently:{" "}
+            {current.length > 0
+              ? current.map((a) => `${a.orgName} (${STATUS_LABELS[a.status]})`).join(", ")
+              : "Unassigned"}
           </p>
         </div>
         <span
@@ -87,7 +96,7 @@ function ReassignRow({ challenge }: { challenge: Challenge }) {
         >
           <option value="">Reassign to...</option>
           {partners
-            ?.filter((p) => p.id !== challenge.assignedPartnerId)
+            ?.filter((p) => p.id !== onlyPartnerId)
             .map((p) => (
             <option key={p.id} value={p.id}>
               {p.orgName} ({p.domains.map((d) => CATEGORY_LABELS[d]).join(", ")})
@@ -100,7 +109,7 @@ function ReassignRow({ challenge }: { challenge: Challenge }) {
           disabled={mutation.isPending || !selectedPartnerId}
           className="rounded-lg bg-slate-900 text-white text-sm font-medium px-3 py-1.5 hover:bg-slate-800 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400"
         >
-          {mutation.isPending ? "Reassigning..." : "Reassign"}
+          {mutation.isPending ? "Reassigning..." : current.length > 1 ? "Replace all with this partner" : "Reassign"}
         </button>
       </div>
 
