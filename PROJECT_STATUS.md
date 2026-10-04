@@ -775,14 +775,43 @@ Anything the next person needs to know:
   multi-partner challenge; it should end with the one chosen partner and
   status Assigned. (6) Existing old challenges still show their one partner
   and status unchanged (backfill).
-- Open item from frPyP: asked to correct the author name on older commits
-  that were made under a different spelling of their name. That needs a
-  history rewrite and force push; it was not done yet and needs frPyP's
-  explicit yes (it changes every later commit's hash for anyone with a
-  clone).
+- The author-name fix that was open here was done in Pass 45.
 - The older Session 15 header notes in this file ("awaiting approval", "build
   it in a fresh chat; nothing is built") were removed because they were
   wrong after this pass; their content is in Pass 42 and Pass 43.
+
+---
+
+### Pass 45 — 2026-10-04 — frPyP — Commit authorship corrected on all earlier commits (history rewritten, force-pushed)
+Did:
+- On frPyP's explicit instruction, every commit authored or committed under
+  a variant of frPyP's GitHub username was remade to use exactly one
+  identity: name `friPyp`, email `323888247+friPyp@users.noreply.github.com`
+  (the GitHub login and numeric ID were read from the account itself).
+  Variants fixed: `frPyP` and `frpyp` noreply addresses, and four commits made
+  through GitHub's web editor (they also had GitHub's own address as
+  committer). 91 of 102 commits now carry this identity.
+- Teammates' commits keep their own authors, and one commit by another
+  account was left alone. The file contents are byte-for-byte identical (the
+  final tree hash was compared before and after); only author, committer and
+  the resulting commit hashes changed. Commit messages were not edited.
+- `main` was force-pushed once, guarded by a lease on the previous head
+  (`fe719a8`), so it could not overwrite anything pushed in the meantime.
+Files touched: `PROJECT_STATUS.md` only (on top of the rewrite).
+Decisions made: used the numeric-ID noreply email so GitHub links the
+commits to the profile. Bugs found/fixed: none. Left incomplete: nothing.
+Anything the next person needs to know:
+- **Every existing clone is now out of step with GitHub.** Anyone with a
+  clone must re-clone (or run `git fetch` then `git reset --hard
+  origin/main`, after saving any unpushed work elsewhere). A plain `git pull`
+  will try to merge old and new history and make a mess.
+- For new commits use `git config user.name friPyp` and `git config
+  user.email 323888247+friPyp@users.noreply.github.com` (this replaces the
+  git setup line in Pass 43).
+- Old commit hashes quoted in earlier passes (for example `fe719a8`) no
+  longer exist; match commits by message instead.
+- A backup bundle of the pre-rewrite history exists only in the sandbox
+  that did this work, not in the repo.
 
 ---
 
