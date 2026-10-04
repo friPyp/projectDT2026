@@ -4,19 +4,23 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createChallenge, ApiError } from "../lib/api";
 import type { Category } from "../lib/api";
-import { CATEGORY_OPTIONS } from "../lib/challengeLabels";
+import { CATEGORY_OPTIONS, CATEGORY_LABELS } from "../lib/challengeLabels";
 import AppLayout from "../components/AppLayout";
 
 interface SubmitFormValues {
   title: string;
   description: string;
   category: Category | "";
+  domains: Category[];
   district: string;
   state: string;
   city: string;
   locality: string;
   address: string;
 }
+
+// Phase 2 Session 15: a challenge is routed on at most 3 domains in total.
+const MAX_EXTRA = 3;
 
 // Phase 2 Session 11: optional plain-text location fields, rendered
 // below District. Text only — no map picker (REFERENCE §2 ban stands).
@@ -36,13 +40,17 @@ export default function SubmitChallengePage() {
   // of auto-navigating — the challenge is already submitted either
   // way, this is purely informational (see lib/dedup.ts).
   const [possibleDuplicates, setPossibleDuplicates] = useState<{ id: string; title: string }[]>([]);
+  // Phase 2 Session 15: the domains the backend actually routed on (it may
+  // have added some from keywords), shown after submit.
+  const [usedDomains, setUsedDomains] = useState<Category[]>([]);
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<SubmitFormValues>({
-    defaultValues: { title: "", description: "", category: "", district: "", state: "", city: "", locality: "", address: "" },
+    defaultValues: { title: "", description: "", category: "", domains: [], district: "", state: "", city: "", locality: "", address: "" },
   });
 
   // Session 3 scope: created with status SUBMITTED, no partner assigned yet
@@ -50,9 +58,14 @@ export default function SubmitChallengePage() {
   // deliberately not built here, confirmed before starting this session).
   const mutation = useMutation({
     mutationFn: (values: SubmitFormValues) =>
-      createChallenge({ ...values, category: values.category as Category }),
+      createChallenge({
+        ...values,
+        category: values.category as Category,
+        domains: (Array.isArray(values.domains) ? values.domains : []).filter((d) => d !== values.category),
+      }),
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["myChallenges"] });
+      setUsedDomains(created.domains ?? []);
       if (created.possibleDuplicates.length > 0) {
         // Submitted either way — just don't whisk them away before
         // they've seen the heads-up.
@@ -65,6 +78,8 @@ export default function SubmitChallengePage() {
       setServerError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     },
   });
+
+  const selectedCategory = watch("category");
 
   const onSubmit = (values: SubmitFormValues) => {
     if (!values.category) {
@@ -84,6 +99,11 @@ export default function SubmitChallengePage() {
         <div className="max-w-xl mx-auto">
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h1 className="text-lg font-semibold text-slate-900 mb-3">Challenge submitted</h1>
+            {usedDomains.length > 0 && (
+              <p className="text-sm text-slate-600 mb-3">
+                Routed on: {usedDomains.map((d) => CATEGORY_LABELS[d]).join(", ")}.
+              </p>
+            )}
             <p role="status" className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
               Heads up — this looks similar to something already reported in your district:
             </p>
@@ -184,6 +204,21 @@ export default function SubmitChallengePage() {
               </p>
             )}
           </div>
+
+          <fieldset>
+            <legend className="block text-sm font-medium text-slate-700 mb-1">Also relevant to (optional)</legend>
+            <p className="text-xs text-slate-500 mb-2">
+              Tick other areas this problem touches. We may add up to {MAX_EXTRA} in total based on your description.
+            </p>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+              {CATEGORY_OPTIONS.filter(([value]) => value !== selectedCategory).map(([value, label]) => (
+                <label key={value} className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="checkbox" value={value} {...register("domains")} className="rounded border-slate-300" />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           <div>
             <label htmlFor="submit-district" className="block text-sm font-medium text-slate-700 mb-1">

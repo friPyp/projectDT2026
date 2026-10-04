@@ -117,7 +117,9 @@ export default function ChallengeUpdates({
         <ol className="mt-2 space-y-3 border-l-2 border-slate-200 pl-3">
           {data!.map((entry) => (
             <li key={entry.id} className="text-sm text-slate-700">
-              <p className="text-xs text-slate-500">{formatDate(entry.createdAt)}</p>
+              <p className="text-xs text-slate-500">
+                {entry.partnerName} · {formatDate(entry.createdAt)}
+              </p>
               <p className="mt-0.5 whitespace-pre-wrap break-words">{entry.note}</p>
             </li>
           ))}

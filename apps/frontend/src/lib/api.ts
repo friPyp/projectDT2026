@@ -106,6 +106,13 @@ export type Category =
 
 export type ChallengeStatus = "SUBMITTED" | "ASSIGNED" | "IN_PROGRESS" | "COMPLETED";
 
+// Phase 2 Session 15: one entry per partner working on a challenge.
+export interface ChallengeAssignmentEntry {
+  partnerId: string;
+  orgName: string;
+  status: ChallengeStatus;
+}
+
 export interface Challenge {
   id: string;
   citizenId: string;
@@ -118,7 +125,14 @@ export interface Challenge {
   city: string | null;
   locality: string | null;
   address: string | null;
+  // For a PARTNER caller, `status` is that partner's own status and
+  // `challengeStatus` is the overall one (Session 15).
   status: ChallengeStatus;
+  challengeStatus?: ChallengeStatus;
+  // Session 15: every domain the challenge was routed on (primary included)
+  // and every partner assigned to it.
+  domains: Category[];
+  assignments: ChallengeAssignmentEntry[];
   assignedPartnerId: string | null;
   team: string | null;
   createdAt: string;
@@ -159,6 +173,8 @@ export function createChallenge(data: {
   title: string;
   description: string;
   category: Category;
+  // Session 15: optional extra domains ("Also relevant to").
+  domains?: Category[];
   district: string;
   state?: string;
   city?: string;
@@ -334,6 +350,8 @@ export interface ChallengeUpdateEntry {
   id: string;
   challengeId: string;
   partnerId: string;
+  // Session 15: the posting partner's org name (notes are a shared thread).
+  partnerName: string;
   note: string;
   createdAt: string;
 }
