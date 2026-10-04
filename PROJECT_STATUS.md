@@ -29,16 +29,10 @@
 > Priority-B) still just needs its real-machine verification pass
 > whenever someone's next on a real machine — unaffected by Phase 2.
 
-> 📌 **2026-10-01 (later) update, frPyP:** Session 15's design is
-> **approved** (frPyP delegated the three questions; answers recorded in
-> REFERENCE §8a). **Build it in a fresh chat; nothing is built yet.** Read
-> Pass 43 for the exact first steps and the one trap to avoid. The older
-> "awaiting approval" note below is superseded and kept for history.
-
-> 📌 **2026-10-01 update, frPyP:** Session 15's design is **written and
-> awaiting frPyP's approval** (REFERENCE §8a, "Session 15 — proposed
-> design", with three questions at its end). **No code or schema has
-> changed.** Do not start building until frPyP answers (Pass 42).
+> 📌 **2026-10-02 update, frPyP:** Session 15 (several partners per
+> challenge) is **built and pushed to `main`; the Neon migration has been
+> applied by frPyP; live verification is pending.** Read Pass 44 for the
+> checklist. Next task after it is verified: Session 16 (UI redesign).
 
 > 📌 **2026-09-30 (later) update, frPyP:** Session 14 is **verified live and
 > closed** (Pass 41). Next task: Session 15 (multi-partner / multi-domain
@@ -725,6 +719,70 @@ Anything the next person needs to know:
   post) after the switch to assignments; both use the old single-partner
   check today. Render's build command already runs `prisma generate`.
 - Finish by logging the live verification as its own pass, then Session 16.
+
+---
+
+### Pass 44 — 2026-10-02 — frPyP — Session 15 (several partners per challenge) built and pushed; needs live verification
+Did:
+- Followed the build order in REFERENCE §8a, each step its own commit,
+  pushed straight away: (1) schema + migration
+  `20261002000000_add_challenge_assignment` (table `challenge_assignments`,
+  column `challenges.domains`, backfill of existing challenges), pushed
+  alone; frPyP ran its SQL in Neon and the Prisma commands locally.
+  (2) `lib/categorize.ts` `pickDomains`, `lib/routing.ts`
+  `routeToPartners`, `lib/assignments.ts`; `POST /challenges` routes on up
+  to 3 domains and creates one assignment per distinct partner.
+  (3) Every "is this partner assigned?" check (status, team, edit-history
+  read, notes read and post) now looks for an assignment row. `PATCH
+  /challenges/:id/status` moves the caller's own assignment and recomputes
+  the challenge status in one transaction. Partner list returns challenges
+  where the partner holds an assignment. Admin reassign replaces all
+  partners with the chosen one; `partnersEngaged` counts distinct assigned
+  partners. (4) Frontend: "Also relevant to" box and "Routed on" notice on
+  the submit form; partner cards show "Also working on this" (other
+  partners' names, statuses, contact channels); notes show the posting
+  partner's org name; citizen cards list all domains and a contact panel per
+  partner; admin rows list all partners with their statuses.
+Files touched: `apps/backend/prisma/schema.prisma`, the new migration,
+`apps/backend/src/lib/{categorize,routing,assignments}.ts`,
+`apps/backend/src/routes/{challenges,admin}.ts`,
+`apps/backend/src/validation/challenges.ts`, frontend `lib/api.ts`,
+`pages/{SubmitChallenge,Dashboard,PartnerDashboard,AdminDashboard}Page.tsx`,
+`components/{AlsoWorkingOn,ChallengeUpdates}.tsx`, `PROJECT_REFERENCE.md`,
+`PROJECT_STATUS.md`.
+Decisions made: see the §9 entry dated 2026-10-02 in REFERENCE. frPyP also
+said breaking the live site briefly with early pushes does not matter, so
+the "wait for the SQL" caution in Pass 43 is relaxed for later sessions;
+this session still waited for the SQL before pushing code.
+Checked: backend and frontend `tsc` pass, frontend `vite build` passes,
+`prisma validate` passes, and the domain-picking and status-deriving
+functions were tested on their own (8 cases pass). **Not tested against a
+database** — the sandbox cannot reach Neon — so no route was run.
+Bugs found/fixed: none known.
+Left in a broken/incomplete state: nothing. `assignedPartnerId` is still
+written (partner for the primary category) and not dropped, per design.
+Anything the next person needs to know:
+- **Live verification checklist:** (1) as the citizen, submit a challenge
+  that clearly mentions two areas (for example a school with no drinking
+  water) and tick one extra box; the "Routed on" notice should list up to 3
+  domains and the dashboard card should show a contact panel per partner.
+  (2) Log in as each assigned partner: both see the challenge, each sees the
+  other under "Also working on this", and each moves only their own status.
+  (3) The citizen's card status should read Assigned while all are
+  Assigned, In Progress once any moves, Completed only when all are done;
+  the citizen gets a notification naming the partner. (4) Post notes from
+  both partners; each note shows its org name. (5) As admin, reassign a
+  multi-partner challenge; it should end with the one chosen partner and
+  status Assigned. (6) Existing old challenges still show their one partner
+  and status unchanged (backfill).
+- Open item from frPyP: asked to correct the author name on older commits
+  that were made under a different spelling of their name. That needs a
+  history rewrite and force push; it was not done yet and needs frPyP's
+  explicit yes (it changes every later commit's hash for anyone with a
+  clone).
+- The older Session 15 header notes in this file ("awaiting approval", "build
+  it in a fresh chat; nothing is built") were removed because they were
+  wrong after this pass; their content is in Pass 42 and Pass 43.
 
 ---
 

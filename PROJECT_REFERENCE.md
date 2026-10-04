@@ -454,7 +454,7 @@ find out), editing after `COMPLETED`, undoing or deleting edits,
 district changes, `domains` (Session 15), partner status notes
 (Session 14).
 
-### Session 15 — decided design (2026-10-01, approved by delegation from frPyP; NOT yet built, no code or schema changed)
+### Session 15 — decided design (2026-10-01, approved by delegation from frPyP; built 2026-10-02, live verification pending — see §9)
 
 Session 15 replaces the single-partner model with several partners per
 challenge. This block settles the open questions first, as Session 13's
@@ -463,7 +463,7 @@ whatever you want"), so the answers are the recommendations given here:
 (a) per-partner status with a derived challenge status, (b) auto-added
 domains with 2+ keyword hits, max 3, (c) keep `assignedPartnerId` for
 now. The four flagged conflicts below are accepted the same way. Nothing
-below is built yet.
+below was built in Pass 44.
 
 **Conflicts with the text above (flagged, not silently picked):**
 1. §6a lists `ChallengeAssignment` as `id, challengeId, partnerId,
@@ -662,3 +662,17 @@ only domains the citizen ticks count? (c) keep the old
   first paragraph were edited to say "decided" and to record the answers
   (per-partner status, auto-added domains 2+ hits max 3, keep
   `assignedPartnerId` for now). The design itself is unchanged.
+
+- **2026-10-02 — Session 15 built (Pass 44):** the §8a design was built as
+  written, with these small decisions the design left open. (1) Order of
+  domains: primary category, then the citizen's ticked extras, then
+  keyword suggestions (2+ hits, strongest first), max 3. (2) Partner list:
+  `GET /challenges` for a PARTNER returns the partner's own status as
+  `status`, the overall one as `challengeStatus`, and their own partner id as
+  `myPartnerId` (additive fields). (3) `PATCH /challenges/:id/status` now
+  also returns `assignments`; its notification text names the partner and
+  the overall status. (4) Reassign is one transaction (delete all
+  assignments, create the chosen one, reset status and team).
+  `GET /challenges/:id/updates` and `POST .../updates` entries gain
+  `partnerName`. Migration `20261002000000_add_challenge_assignment`
+  (with backfill). No new error codes.
