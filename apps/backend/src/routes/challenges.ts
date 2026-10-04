@@ -11,7 +11,7 @@ import {
 import { requireAuth, requireRole } from "../middleware/auth";
 import { categorize, pickDomains } from "../lib/categorize";
 import { routeToPartners } from "../lib/routing";
-import { assignmentsInclude, withAssignments } from "../lib/assignments";
+import { assignmentsInclude, withAssignments, deriveChallengeStatus } from "../lib/assignments";
 import { notify } from "../lib/notify";
 import { findPossibleDuplicates } from "../lib/dedup";
 
@@ -23,6 +23,15 @@ import { findPossibleDuplicates } from "../lib/dedup";
 // assume).
 async function getPartnerForUser(userId: string) {
   return prisma.partner.findUnique({ where: { userId } });
+}
+
+// Phase 2 Session 15: "is this partner assigned?" now means "has an
+// assignment row" (PROJECT_REFERENCE.md §8a Session 15 design), since
+// several partners can work on one challenge.
+async function getAssignment(challengeId: string, partnerId: string) {
+  return prisma.challengeAssignment.findUnique({
+    where: { challengeId_partnerId: { challengeId, partnerId } },
+  });
 }
 
 // Session 5: only forward, one-step-at-a-time transitions are valid.
@@ -118,27 +127,37 @@ router.get("/", requireAuth, requireRole("CITIZEN", "PARTNER", "ADMIN"), async (
     const challenges = await prisma.challenge.findMany({
       where: { citizenId: req.user!.id },
       orderBy: { createdAt: "desc" },
+      include: assignmentsInclude,
     });
-    return res.json(challenges);
+    return res.json(challenges.map(withAssignments));
   }
 
   if (req.user!.role === "ADMIN") {
     const challenges = await prisma.challenge.findMany({
       orderBy: { createdAt: "desc" },
+      include: assignmentsInclude,
     });
-    return res.json(challenges);
+    return res.json(challenges.map(withAssignments));
   }
 
-  // PARTNER
+  // PARTNER — Phase 2 Session 15: every challenge this partner holds an
+  // assignment on, showing *this partner's own* status as `status` (the
+  // challenge's overall status is still returned as `challengeStatus`).
   const partner = await getPartnerForUser(req.user!.id);
   if (!partner) {
     return res.json([]);
   }
   const challenges = await prisma.challenge.findMany({
-    where: { assignedPartnerId: partner.id },
+    where: { assignments: { some: { partnerId: partner.id } } },
     orderBy: { createdAt: "desc" },
+    include: assignmentsInclude,
   });
-  res.json(challenges);
+  res.json(
+    challenges.map((c) => {
+      const own = c.assignments.find((a) => a.partnerId === partner.id);
+      return { ...withAssignments(c), status: own ? own.status : c.status, challengeStatus: c.status };
+    })
+  );
 });
 
 // PATCH /challenges/:id — CITIZEN only, own challenge, Phase 2 Session 13
@@ -219,7 +238,7 @@ router.get("/:id/edits", requireAuth, requireRole("CITIZEN", "PARTNER", "ADMIN")
     if (!partner) {
       return sendError(res, 403, "FORBIDDEN", "No partner profile linked to this account.");
     }
-    if (challenge.assignedPartnerId !== partner.id) {
+    if (!(await getAssignment(challenge.id, partner.id))) {
       return sendError(res, 403, "FORBIDDEN", "This challenge isn't assigned to you.");
     }
   }
@@ -254,17 +273,26 @@ router.get("/:id/updates", requireAuth, requireRole("CITIZEN", "PARTNER", "ADMIN
     if (!partner) {
       return sendError(res, 403, "FORBIDDEN", "No partner profile linked to this account.");
     }
-    if (challenge.assignedPartnerId !== partner.id) {
+    if (!(await getAssignment(challenge.id, partner.id))) {
       return sendError(res, 403, "FORBIDDEN", "This challenge isn't assigned to you.");
     }
   }
 
+  // Session 15: the notes are the shared thread for every assigned
+  // partner, so each note carries the posting partner's org name.
   const updates = await prisma.challengeUpdate.findMany({
     where: { challengeId: challenge.id },
     orderBy: { createdAt: "desc" },
-    select: { id: true, challengeId: true, partnerId: true, note: true, createdAt: true },
+    select: {
+      id: true,
+      challengeId: true,
+      partnerId: true,
+      note: true,
+      createdAt: true,
+      partner: { select: { orgName: true } },
+    },
   });
-  res.json(updates);
+  res.json(updates.map(({ partner, ...rest }) => ({ ...rest, partnerName: partner.orgName })));
 });
 
 // POST /challenges/:id/updates — PARTNER only, and only on a challenge
@@ -284,7 +312,7 @@ router.post("/:id/updates", requireAuth, requireRole("PARTNER"), async (req, res
   if (!challenge) {
     return sendError(res, 404, "CHALLENGE_NOT_FOUND", "No challenge with that id.");
   }
-  if (challenge.assignedPartnerId !== partner.id) {
+  if (!(await getAssignment(challenge.id, partner.id))) {
     return sendError(res, 403, "FORBIDDEN", "This challenge isn't assigned to you.");
   }
 
@@ -292,7 +320,7 @@ router.post("/:id/updates", requireAuth, requireRole("PARTNER"), async (req, res
     data: { challengeId: challenge.id, partnerId: partner.id, note: parsed.data.note },
     select: { id: true, challengeId: true, partnerId: true, note: true, createdAt: true },
   });
-  res.status(201).json(created);
+  res.status(201).json({ ...created, partnerName: partner.orgName });
 });
 
 // PATCH /challenges/:id/team — PARTNER only (§8). Sets the plain-text
@@ -313,7 +341,7 @@ router.patch("/:id/team", requireAuth, requireRole("PARTNER"), async (req, res) 
   if (!challenge) {
     return sendError(res, 404, "CHALLENGE_NOT_FOUND", "No challenge with that id.");
   }
-  if (challenge.assignedPartnerId !== partner.id) {
+  if (!(await getAssignment(challenge.id, partner.id))) {
     return sendError(res, 403, "FORBIDDEN", "This challenge isn't assigned to you.");
   }
 
@@ -348,36 +376,52 @@ router.patch("/:id/status", requireAuth, requireRole("PARTNER"), async (req, res
   if (!challenge) {
     return sendError(res, 404, "CHALLENGE_NOT_FOUND", "No challenge with that id.");
   }
-  if (challenge.assignedPartnerId !== partner.id) {
+  // Phase 2 Session 15: the calling partner moves only their own
+  // assignment; the challenge's status is recomputed from all assignments
+  // in the same transaction.
+  const assignment = await getAssignment(challenge.id, partner.id);
+  if (!assignment) {
     return sendError(res, 403, "FORBIDDEN", "This challenge isn't assigned to you.");
   }
 
-  const allowedNext = VALID_TRANSITIONS[challenge.status] ?? [];
+  const allowedNext = VALID_TRANSITIONS[assignment.status] ?? [];
   if (!allowedNext.includes(parsed.data.status)) {
     return sendError(
       res,
       409,
       "INVALID_STATUS_TRANSITION",
-      `Cannot move from ${challenge.status} to ${parsed.data.status} directly.`
+      `Cannot move from ${assignment.status} to ${parsed.data.status} directly.`
     );
   }
 
-  const updated = await prisma.challenge.update({
-    where: { id: challenge.id },
-    data: { status: parsed.data.status },
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.challengeAssignment.update({
+      where: { id: assignment.id },
+      data: { status: parsed.data.status },
+    });
+    const all = await tx.challengeAssignment.findMany({
+      where: { challengeId: challenge.id },
+      select: { status: true },
+    });
+    return tx.challenge.update({
+      where: { id: challenge.id },
+      data: { status: deriveChallengeStatus(all.map((a) => a.status)) },
+      include: assignmentsInclude,
+    });
   });
 
   // Session 6: STATUS_UPDATED fires on every valid transition, to the
   // citizen who owns the challenge (not the partner making the change) —
-  // per PROJECT_STATUS.md §6.
+  // per PROJECT_STATUS.md §6. Session 15: fires whenever any partner moves
+  // their assignment, and says which partner did.
   await notify(
     updated.citizenId,
     "STATUS_UPDATED",
     "Status updated",
-    `Your challenge "${updated.title}" is now ${updated.status}.`
+    `${partner.orgName} moved your challenge "${updated.title}" to ${parsed.data.status}. Overall status: ${updated.status}.`
   );
 
-  res.json(updated);
+  res.json(withAssignments(updated));
 });
 
 export default router;

@@ -4,6 +4,7 @@ import { sendError } from "../utils/errors";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { reassignChallengeSchema } from "../validation/challenges";
 import { notify } from "../lib/notify";
+import { assignmentsInclude, withAssignments } from "../lib/assignments";
 
 const router = Router();
 
@@ -21,10 +22,10 @@ router.get("/dashboard", requireAuth, requireRole("ADMIN"), async (_req, res) =>
       prisma.challenge.groupBy({ by: ["category"], _count: { _all: true } }),
       prisma.challenge.groupBy({ by: ["status"], _count: { _all: true } }),
       prisma.challenge.count({ where: { status: "COMPLETED" } }),
-      prisma.challenge.findMany({
-        where: { assignedPartnerId: { not: null } },
-        select: { assignedPartnerId: true },
-        distinct: ["assignedPartnerId"],
+      // Session 15: distinct partners holding at least one assignment.
+      prisma.challengeAssignment.findMany({
+        select: { partnerId: true },
+        distinct: ["partnerId"],
       }),
     ]);
 
@@ -92,14 +93,26 @@ router.patch(
     // Added on frPyP's request, 2026-09-29: reassigning to the partner
     // that already has the challenge is rejected — otherwise it would
     // needlessly reset status to ASSIGNED, clear the team and re-notify.
-    if (challenge.assignedPartnerId === partnerId) {
+    // Session 15: reassign now means "replace all current partners with
+    // this one partner", so it is rejected only when that partner is
+    // already the one and only assigned partner.
+    const current = await prisma.challengeAssignment.findMany({
+      where: { challengeId: challenge.id },
+      select: { partnerId: true },
+    });
+    if (current.length === 1 && current[0].partnerId === partnerId) {
       return sendError(res, 400, "VALIDATION_ERROR", "This challenge is already assigned to that partner.");
     }
 
-    const updated = await prisma.challenge.update({
-      where: { id: challenge.id },
-      data: { assignedPartnerId: partnerId, status: "ASSIGNED", team: null },
-    });
+    const [, , updated] = await prisma.$transaction([
+      prisma.challengeAssignment.deleteMany({ where: { challengeId: challenge.id } }),
+      prisma.challengeAssignment.create({ data: { challengeId: challenge.id, partnerId } }),
+      prisma.challenge.update({
+        where: { id: challenge.id },
+        data: { assignedPartnerId: partnerId, status: "ASSIGNED", team: null },
+        include: assignmentsInclude,
+      }),
+    ]);
 
     await notify(
       partner.userId,
@@ -108,7 +121,7 @@ router.patch(
       `A challenge ("${updated.title}") has been assigned to your organization.`
     );
 
-    res.json(updated);
+    res.json(withAssignments(updated));
   }
 );
 
